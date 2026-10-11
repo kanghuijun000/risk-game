@@ -919,6 +919,7 @@ const TITLES = {
   accountChoiceScreen: "계정 시작",
   restoreScreen: "기존 계정 복구",
   homeScreen: "리스크 게임",
+  manualScreen: "설명서",
   amountScreen: "게임 금액 설정",
   gameScreen: "게임",
   summaryScreen: "게임 결과",
