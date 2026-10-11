@@ -2130,6 +2130,26 @@ $("deleteAccountButton").addEventListener("click", () => {
   );
 });
 
+$("leaveAccountButton").addEventListener("click", () => {
+  askConfirm(
+    "계정을 삭제하는 작업이 아닙니다. 이 기기에서만 계정에서 나가며, 계정과 온라인 게임 데이터는 서버에 그대로 남습니다. 다시 계정을 찾으려면 첫 화면에서 '기존 계정 복구'를 선택하고 복구 비밀번호를 입력해야 합니다. 복구 비밀번호를 설정하지 않았거나 잊어버렸다면 계정을 다시 찾지 못할 수 있습니다. 계속할까요?",
+    () => {
+      const status = $("leaveAccountMessage");
+      if (status) {
+        status.textContent = "";
+        status.classList.remove("recovery-error");
+      }
+      if (typeof window.riskGameLeaveAccount === "function") {
+        window.riskGameLeaveAccount();
+      } else if (status) {
+        status.textContent = "계정 나가기 기능을 준비하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.";
+        status.classList.add("recovery-error");
+      }
+    },
+    "계정 탈퇴 확인"
+  );
+});
+
 $("resetGameButton").addEventListener("click", () => {
   askConfirm(
     "모든 진행 데이터를 초기화할까요? 예산, 게임 한도, 리롤, 은행 원금과 이자, 이자율, 시급 대기 시간, 해금 항목과 진행 중인 게임이 모두 초기 상태로 돌아갑니다. 이 작업은 되돌릴 수 없습니다.",
