@@ -22,10 +22,55 @@
   let busy = false;
   let syncedUserId = null;
   let renderedRequestsSignature = null;
+  let latestRequestIds = [];
   let renderedFriendsSignature = null;
   let presenceSyncInProgress = false;
   let presenceSyncPending = false;
   let lastPresenceSyncAt = 0;
+
+
+  function friendRequestSeenStorageKey() {
+    return currentUser ? "risk-game-seen-friend-requests:" + currentUser.id : "";
+  }
+
+  function getSeenFriendRequestIds() {
+    const key = friendRequestSeenStorageKey();
+    if (!key) return new Set();
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "[]");
+      return new Set(Array.isArray(saved) ? saved.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function markFriendRequestsSeen(ids = latestRequestIds) {
+    const key = friendRequestSeenStorageKey();
+    if (!key) return;
+    const seen = getSeenFriendRequestIds();
+    ids.forEach(id => seen.add(String(id)));
+    try { localStorage.setItem(key, JSON.stringify(Array.from(seen))); } catch {}
+    updateFriendRequestDot(false);
+  }
+
+  function updateFriendRequestDot(show) {
+    const dot = $("friendRequestNotificationDot");
+    const button = $("friendMenuButton");
+    if (dot) dot.classList.toggle("hidden", !show);
+    if (button) button.setAttribute("aria-label", show ? "친구, 새 친구 요청 있음" : "친구");
+  }
+
+  function refreshFriendRequestDot(requests) {
+    latestRequestIds = requests.map(request => String(request.id));
+    const friendScreen = $("friendScreen");
+    if (friendScreen && !friendScreen.classList.contains("hidden")) {
+      // 친구 화면을 보고 있는 동안 도착한 요청은 확인한 것으로 처리합니다.
+      markFriendRequestsSeen(latestRequestIds);
+      return;
+    }
+    const seen = getSeenFriendRequestIds();
+    updateFriendRequestDot(latestRequestIds.some(id => !seen.has(id)));
+  }
 
   function withTimeout(promise, label, milliseconds = 12000) {
     let timer;
@@ -216,6 +261,8 @@
     if (!list) return;
 
     if (!client || !currentUser) {
+      latestRequestIds = [];
+      updateFriendRequestDot(false);
       const signature = "offline";
       if (renderedRequestsSignature !== signature) {
         const empty = document.createElement("p");
@@ -238,6 +285,7 @@
     if (error) throw error;
 
     const rows = requests || [];
+    refreshFriendRequestDot(rows);
     const signature = currentUser.id + ":" + JSON.stringify(rows.map(request => [
       request.id, request.sender_id, request.sender_name, request.sender_code
     ]));
@@ -583,6 +631,7 @@
       if (event.key === "Enter") addFriend();
     });
     $("friendMenuButton").addEventListener("click", async () => {
+      markFriendRequestsSeen();
       if (!configured) {
         setMessage("온라인 연결 설정을 확인해야 합니다.", true);
       } else if (currentUser) {
