@@ -9,7 +9,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=19">
+  <link rel="stylesheet" href="./style.css?v=20">
 </head>
 <body>
 <div class="app">
@@ -101,8 +101,9 @@
           <span class="menu-icon">💰</span><span>돈</span>
           <span id="wageReadyDot" class="ready-dot hidden" aria-label="시급 수령 가능"></span>
         </button>
-        <button id="friendMenuButton" class="menu-button" data-screen="friendScreen">
+        <button id="friendMenuButton" class="menu-button" data-screen="friendScreen" aria-label="친구">
           <span class="menu-icon">👥</span><span>친구</span>
+          <span id="friendRequestNotificationDot" class="friend-request-notification-dot hidden" aria-hidden="true"></span>
         </button>
       </div>
     </section>
@@ -575,7 +576,7 @@
 <script src="./script.js?v=34" defer></script>
 <script src="./supabase-config.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="./friends.js?v=19" defer></script>
+<script src="./friends.js?v=20" defer></script>
 <script src="./recovery.js?v=11" defer></script>
 </body>
 </html>
