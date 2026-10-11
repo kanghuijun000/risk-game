@@ -392,7 +392,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false) {
   const available = fresh.length ? fresh : combinations;
   // 선택지끼리 기대 가치가 크게 벌어지지 않도록 허용 폭을 좁게 유지합니다.
   // 2개 모드는 특히 한쪽이 명백한 정답이 되는 조합을 강하게 억제합니다.
-  const maxSpread = targetCount === 3 ? 15 : 8;
+  const maxSpread = 8;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
   // 기준을 만족하는 조합이 없으면 가장 작은 가치 차이의 조합만 사용합니다.
