@@ -94,8 +94,8 @@ const SAFE_CHOICES = [
     id: "safe10",
     effect: 2,
     title: "+2%",
-    penalty: "패널티: 20% 확률로 10% 손실",
-    penaltyChance: 20,
+    penalty: "패널티: 21% 확률로 10% 손실",
+    penaltyChance: 21,
     penaltyType: "loss10"
   },
   {
@@ -110,16 +110,16 @@ const SAFE_CHOICES = [
     id: "safe20",
     effect: 4,
     title: "+4%",
-    penalty: "패널티: 40% 확률로 10% 손실",
-    penaltyChance: 40,
+    penalty: "패널티: 41% 확률로 10% 손실",
+    penaltyChance: 41,
     penaltyType: "loss10"
   },
   {
     id: "safe25",
     effect: 5,
     title: "+5%",
-    penalty: "패널티: 19% 확률로 25% 손실",
-    penaltyChance: 19,
+    penalty: "패널티: 20% 확률로 25% 손실",
+    penaltyChance: 20,
     penaltyType: "loss25"
   },
   {
@@ -173,64 +173,64 @@ const RISKY_CHOICES = [
     id: "risk40",
     effect: 5,
     title: "+5%",
-    penalty: "패널티: 19% 확률로 25% 손실",
-    penaltyChance: 19,
+    penalty: "패널티: 20% 확률로 25% 손실",
+    penaltyChance: 20,
     penaltyType: "loss25"
   },
   {
     id: "risk50",
     effect: 6,
     title: "+6%",
-    penalty: "패널티: 23% 확률로 25% 손실",
-    penaltyChance: 23,
+    penalty: "패널티: 24% 확률로 25% 손실",
+    penaltyChance: 24,
     penaltyType: "loss25"
   },
   {
     id: "risk75",
     effect: 8,
     title: "+8%",
-    penalty: "패널티: 29% 확률로 25% 손실",
-    penaltyChance: 29,
+    penalty: "패널티: 30% 확률로 25% 손실",
+    penaltyChance: 30,
     penaltyType: "loss25"
   },
   {
     id: "risk100",
     effect: 10,
     title: "+10%",
-    penalty: "패널티: 18% 확률로 50% 손실",
-    penaltyChance: 18,
+    penalty: "패널티: 19% 확률로 50% 손실",
+    penaltyChance: 19,
     penaltyType: "loss50"
   },
   {
     id: "risk200",
     effect: 15,
     title: "+15%",
-    penalty: "패널티: 26% 확률로 50% 손실",
-    penaltyChance: 26,
+    penalty: "패널티: 27% 확률로 50% 손실",
+    penaltyChance: 27,
     penaltyType: "loss50"
   },
   {
     id: "risk1000",
     effect: 5,
     title: "+5%",
-    penalty: "패널티: 5% 확률로 전액 손실",
-    penaltyChance: 5,
+    penalty: "패널티: 6% 확률로 전액 손실",
+    penaltyChance: 6,
     penaltyType: "totalLoss"
   },
   {
     id: "riskMinus25",
     effect: 7,
     title: "+7%",
-    penalty: "패널티: 27% 확률로 25% 손실",
-    penaltyChance: 27,
+    penalty: "패널티: 28% 확률로 25% 손실",
+    penaltyChance: 28,
     penaltyType: "loss25"
   },
   {
     id: "riskMinus50",
     effect: 12,
     title: "+12%",
-    penalty: "패널티: 21% 확률로 50% 손실",
-    penaltyChance: 21,
+    penalty: "패널티: 22% 확률로 50% 손실",
+    penaltyChance: 22,
     penaltyType: "loss50"
   },
   {
