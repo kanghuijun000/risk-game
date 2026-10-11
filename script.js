@@ -242,6 +242,33 @@ const RISKY_CHOICES = [
     penaltyType: "none",
     bonusType: "reduceLoss",
     bonusTurns: 5
+  },
+  {
+    id: "rare25",
+    effect: 25,
+    title: "+25%",
+    penalty: "패널티: 20% 확률로 전액 손실",
+    penaltyChance: 20,
+    penaltyType: "totalLoss",
+    rarityWeight: 0.005
+  },
+  {
+    id: "rare50",
+    effect: 50,
+    title: "+50%",
+    penalty: "패널티: 33.3% 확률로 전액 손실",
+    penaltyChance: 33.3,
+    penaltyType: "totalLoss",
+    rarityWeight: 0.005
+  },
+  {
+    id: "rare100",
+    effect: 100,
+    title: "+100%",
+    penalty: "패널티: 50% 확률로 전액 손실",
+    penaltyChance: 50,
+    penaltyType: "totalLoss",
+    rarityWeight: 0.005
   }
 ];
 
@@ -394,6 +421,14 @@ function generateChoices(previous = null, count = 2, safeBoost = false) {
       item.choices.reduce(
         (sum, choice) => sum + 1 / occurrenceCount.get(choice.id),
         0
+      ) *
+      // 희귀 선택지는 기대값을 맞추되, 일반 선택지보다 훨씬 낮은 빈도로 등장시킵니다.
+      item.choices.reduce(
+        (rarity, choice) => Math.min(
+          rarity,
+          Number(choice.rarityWeight) > 0 ? Number(choice.rarityWeight) : 1
+        ),
+        1
       ) *
       (safeBoost && item.choices.some(choice => choice.id === "safeNoPenalty")
         ? 1.5
