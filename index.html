@@ -9,7 +9,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=18">
+  <link rel="stylesheet" href="./style.css?v=19">
 </head>
 <body>
 <div class="app">
@@ -153,11 +153,6 @@
         <p id="forcedHint" class="muted hidden">다음 선택은 지정된 색상으로 해야 합니다.</p>
       </div>
 
-      <div class="bankruptcy-rule" role="note" aria-label="파산 규칙">
-        <strong>⚠️ 파산 규칙</strong>
-        <span>현재 금액이 1,000원 이하일 때 감소 선택지 또는 감소 패널티를 받으면 즉시 파산합니다.</span>
-      </div>
-
       <div class="choice-grid">
         <button id="choiceLeft" class="choice-card blue">
           <span id="leftColor" class="choice-color">BLUE</span>
@@ -187,6 +182,8 @@
         <button id="rerollButton" class="secondary">🔄 리롤</button>
         <button id="stopGameButton" class="danger">게임 중지</button>
       </div>
+
+      <div class="bankruptcy-rule" role="note">현재 금액이 1,000원 이하일 때 감소 선택지 또는 감소 패널티를 받으면 즉시 파산합니다.</div>
     </section>
 
     <section id="summaryScreen" class="screen hidden">
