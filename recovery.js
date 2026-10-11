@@ -350,6 +350,34 @@
 
   window.riskGameDeleteAccount = deleteCurrentAccount;
 
+  // 계정은 서버에서 삭제하지 않고, 현재 기기의 세션과 로컬 데이터만 정리합니다.
+  window.riskGameLeaveAccount = () => {
+    const status = $("leaveAccountMessage");
+    if (!client) {
+      if (status) {
+        status.textContent = "온라인 계정 서버에 연결되지 않았습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.";
+        status.classList.add("recovery-error");
+      }
+      return false;
+    }
+    if (localStorage.getItem(RECOVERY_ENABLED_KEY) !== "true") {
+      if (status) {
+        status.textContent = "계정을 나가기 전에 먼저 '복구 비밀번호 설정'에서 복구 비밀번호를 설정하세요. 설정하지 않으면 계정을 다시 찾지 못할 수 있습니다.";
+        status.classList.add("recovery-error");
+      }
+      return false;
+    }
+    if (restoreInProgress || accountDeletionInProgress) {
+      if (status) {
+        status.textContent = "계정 작업이 진행 중입니다. 잠시 후 다시 시도하세요.";
+        status.classList.add("recovery-error");
+      }
+      return false;
+    }
+    handleDeviceDisplaced();
+    return true;
+  };
+
   async function saveCloudState() {
     if (!client || !deviceVerified || localStorage.getItem(RECOVERY_ENABLED_KEY) !== "true" ||
         typeof window.riskGameGetState !== "function") return;
