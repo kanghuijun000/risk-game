@@ -770,7 +770,7 @@ function updateSettingsControls() {
 
 function triggerGameVibration() {
   if (state.vibrationEnabled === false || !("vibrate" in navigator)) return;
-  try { navigator.vibrate(120); } catch (error) {
+  try { navigator.vibrate(170); } catch (error) {
     console.warn("진동을 실행하지 못했습니다:", error);
   }
 }
