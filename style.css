@@ -186,6 +186,7 @@ main {
 }
 
 .menu-button {
+  position: relative;
   min-height: 118px;
   padding: 18px;
   display: flex;
@@ -199,6 +200,19 @@ main {
   text-align: left;
   font-weight: 800;
   transition: transform .12s, border-color .12s;
+}
+
+
+.friend-request-notification-dot {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
 }
 
 .menu-button:active, .choice-card:active, .wide-button:active {
