@@ -1383,3 +1383,56 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
   margin: 0;
   color: #c8c8c8;
 }
+
+
+/* In-app manual */
+.home-manual-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 2px;
+}
+.manual-open-button {
+  min-height: 40px;
+  padding: 9px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+.manual-open-button:active { transform: scale(.98); }
+.manual-heading { margin-bottom: 16px; }
+.manual-card {
+  margin-bottom: 13px;
+  padding: 17px;
+}
+.manual-card h3 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  line-height: 1.4;
+}
+.manual-card p,
+.manual-card li {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.manual-card ul,
+.manual-card ol {
+  margin: 0;
+  padding-left: 21px;
+}
+.manual-card li + li { margin-top: 7px; }
+.manual-card .manual-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(130, 170, 255, .09);
+  color: var(--muted);
+  font-size: 12px;
+}
