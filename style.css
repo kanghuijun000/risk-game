@@ -370,6 +370,25 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
   font-size: 12px;
 }
 
+.bankruptcy-rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(240, 79, 104, 0.48);
+  border-radius: 13px;
+  background: rgba(120, 35, 52, 0.22);
+  color: #ffdce2;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.bankruptcy-rule strong {
+  color: #ff9aaa;
+  font-size: 13px;
+}
+
 .choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
