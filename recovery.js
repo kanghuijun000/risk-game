@@ -142,9 +142,26 @@
       const deviceId = getDeviceId();
       await invoke("claim_device", { deviceId });
       await invoke("register", { password, deviceId });
+
+      // 복구 비밀번호 등록 과정에서 이메일/비밀번호가 변경되므로,
+      // 이전 익명 세션에 의존하지 않고 새 복구 로그인 정보로 세션을 다시 확립합니다.
+      const found = await invoke("lookup", { password });
+      if (!found.email) {
+        throw new Error("복구 비밀번호는 등록했지만 로그인 정보를 확인하지 못했습니다. 기존 계정 복구에서 같은 비밀번호로 다시 연결해 주세요.");
+      }
+      const { data: signed, error: signInError } = await client.auth.signInWithPassword({
+        email: found.email,
+        password
+      });
+      if (signInError) throw signInError;
+      if (!signed?.user || !signed?.session) {
+        throw new Error("복구 비밀번호는 등록했지만 로그인 연결이 완료되지 않았습니다. 기존 계정 복구에서 같은 비밀번호로 다시 연결해 주세요.");
+      }
+
       localStorage.removeItem(DISPLACED_KEY);
       localStorage.setItem(RECOVERY_ENABLED_KEY, "true");
       deviceVerified = true;
+      displacementHandled = false;
       $("recoverySetupModal").classList.add("hidden");
       const entryPanel = $("recoverySetupEntryPanel");
       if (entryPanel) entryPanel.classList.add("hidden");
