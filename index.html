@@ -350,6 +350,15 @@
         <div class="panel">
           <p>복구 비밀번호를 설정하면 이 계정의 게임 데이터도 온라인에 동기화됩니다.</p>
         </div>
+
+        <div class="panel leave-account-panel">
+          <p class="eyebrow">ACCOUNT EXIT</p>
+          <h3>계정 탈퇴</h3>
+          <p>계정을 영구 삭제하지 않고 이 기기에서만 나갑니다. 다시 계정을 사용하려면 첫 화면에서 기존 계정 복구를 선택하고 복구 비밀번호를 입력해야 합니다.</p>
+          <p class="muted">계정을 안전하게 다시 찾을 수 있도록 복구 비밀번호를 먼저 설정하고 기억하고 있는지 확인하세요.</p>
+          <button id="leaveAccountButton" class="wide-button secondary" type="button">계정 탈퇴</button>
+          <p id="leaveAccountMessage" class="settings-feedback" role="status"></p>
+        </div>
       </div>
 
       <div id="settingsPanelControlsBackground" class="settings-category-panel hidden" data-settings-panel="controlsBackground">
@@ -561,10 +570,10 @@
     <p>앱을 완전히 종료한 뒤 다시 실행해 주세요.</p>
   </div>
 </div>
-<script src="./script.js?v=32" defer></script>
+<script src="./script.js?v=33" defer></script>
 <script src="./supabase-config.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="./friends.js?v=19" defer></script>
-<script src="./recovery.js?v=9" defer></script>
+<script src="./recovery.js?v=10" defer></script>
 </body>
 </html>
