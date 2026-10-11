@@ -291,24 +291,38 @@ function samePair(a, b) {
   return aIds === bIds;
 }
 
-function estimateChoiceValue(choice) {
-  // 선택 즉시 효과와 패널티의 기대값을 같은 기준(금액 배율)으로 환산합니다.
+function isChoiceAvailableAtMoney(choice, currentMoney) {
+  const money = Number(currentMoney);
+  if (!Number.isFinite(money) || money <= 0) return true;
   const baseMultiplier = choice.effect < 0
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
+  const moneyAfterEffect = Math.round(money * baseMultiplier);
+  const isPercentLoss = ["loss10", "loss25", "loss50"].includes(choice.penaltyType);
+  if (money <= 1000 && choice.effect < 0) return false;
+  if (isPercentLoss && choice.penaltyChance > 0 && moneyAfterEffect <= 1000) return false;
+  return true;
+}
 
+function estimateChoiceValue(choice, currentMoney = null) {
+  const money = Number(currentMoney);
+  const hasMoney = Number.isFinite(money) && money > 0;
+  if (hasMoney && money <= 1000 && choice.effect < 0) return -100;
+  const baseMultiplier = choice.effect < 0
+    ? 1 - Math.abs(choice.effect) / 100
+    : 1 + choice.effect / 100;
   const chance = Math.max(0, Math.min(100, choice.penaltyChance || 0)) / 100;
+  const moneyAfterEffect = hasMoney ? Math.round(money * baseMultiplier) : null;
   let penaltyMultiplier = 1;
-
   switch (choice.penaltyType) {
     case "loss10":
-      penaltyMultiplier = 1 - chance * 0.10;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1000 ? 1 - chance : 1 - chance * 0.10;
       break;
     case "loss25":
-      penaltyMultiplier = 1 - chance * 0.25;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1000 ? 1 - chance : 1 - chance * 0.25;
       break;
     case "loss50":
-      penaltyMultiplier = 1 - chance * 0.50;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1000 ? 1 - chance : 1 - chance * 0.50;
       break;
     case "totalLoss":
       penaltyMultiplier = 1 - chance;
@@ -316,41 +330,33 @@ function estimateChoiceValue(choice) {
     case "forceBlue":
     case "forceRed":
     case "forceGreen":
-      // 강제 색상은 다음 턴의 선택 폭을 줄이므로 작은 기대 비용으로 반영합니다.
       penaltyMultiplier = 1 - chance * 0.06;
       break;
   }
-
   let multiplier = baseMultiplier * penaltyMultiplier;
-
-  // 보너스의 장기 효과는 시뮬레이션 결과에 맞춰 턴당 0.4%만 보수적으로 반영합니다.
   if (choice.bonusType === "reduceLoss") {
     multiplier += Math.min(10, choice.bonusTurns || 5) * 0.004;
   } else if (choice.bonusType === "safePositive") {
-    // 10턴 동안 안전한 양수 선택지가 더 자주 등장하는 효과를 과대평가하지 않도록 반영합니다.
     multiplier += Math.min(10, choice.bonusTurns || 10) * 0.004;
   }
-
   return (multiplier - 1) * 100;
 }
 
-function generateChoices(previous = null, count = 2, safeBoost = false) {
+function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null) {
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen");
 
-  // 보너스가 활성화되면 무패널티 선택지가 더 자주 등장하도록 가중치를 줍니다.
-  if (safeBoost) {
-    const safeChoice = SAFE_CHOICES.find(choice => choice.id === "safeNoPenalty");
-    if (safeChoice) pool.push(safeChoice, safeChoice);
-  }
+  // 무패널티 선택지의 추가 가중치는 조합 선택 단계에서 반영합니다.
 
   const unique = new Map();
   pool.forEach(choice => unique.set(choice.id, choice));
-  const candidates = [...unique.values()];
+  const candidates = [...unique.values()].filter(choice =>
+    isChoiceAvailableAtMoney(choice, currentMoney)
+  );
   const valueById = new Map(candidates.map(choice => [
     choice.id,
-    estimateChoiceValue(choice)
+    estimateChoiceValue(choice, currentMoney)
   ]));
 
   // 가능한 조합을 전부 평가해 선택지끼리의 기대값 격차가 과도한 조합을 피합니다.
@@ -362,6 +368,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false) {
       combinations.push({
         choices: picked.slice(),
         spread,
+        averageValue: values.reduce((sum, value) => sum + value, 0) / values.length,
         previous: samePair(picked, previous)
       });
       return;
@@ -390,16 +397,26 @@ function generateChoices(previous = null, count = 2, safeBoost = false) {
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
-  // 선택지끼리 기대 가치가 크게 벌어지지 않도록 허용 폭을 좁게 유지합니다.
-  // 2개 모드는 특히 한쪽이 명백한 정답이 되는 조합을 강하게 억제합니다.
-  const maxSpread = 8;
+  // 두 모드 모두 선택지의 기대값 차이를 4%p 이내로 제한합니다.
+  const maxSpread = 4;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
-  // 기준을 만족하는 조합이 없으면 가장 작은 가치 차이의 조합만 사용합니다.
-  // 기존처럼 최솟값보다 넓은 여유를 주면 명백히 우세한 선택지가 다시 나타날 수 있습니다.
-  if (!eligible.length) {
-    const bestSpread = Math.min(...available.map(item => item.spread));
-    eligible = available.filter(item => item.spread <= bestSpread + 0.5);
+  // 기대값 차이가 작은 조합 중에서도 평균 기대값이 0%에 가까운 조합을 우선합니다.
+  // 한 조합의 선택지들이 모두 유리하거나 모두 불리해지는 편향을 줄입니다.
+  if (eligible.length) {
+    const nearNeutral = eligible.filter(item => Math.abs(item.averageValue) <= 1);
+    if (nearNeutral.length) {
+      eligible = nearNeutral;
+    } else {
+      const score = item => item.spread + 1.5 * Math.abs(item.averageValue);
+      const bestScore = Math.min(...eligible.map(score));
+      eligible = eligible.filter(item => score(item) <= bestScore + 0.5);
+    }
+  } else {
+    // 기준을 만족하는 조합이 없으면 기대값 차이와 평균 편향을 함께 최소화합니다.
+    const score = item => item.spread + 1.5 * Math.abs(item.averageValue);
+    const bestScore = Math.min(...available.map(score));
+    eligible = available.filter(item => score(item) <= bestScore + 0.5);
   }
 
   // 특정 가치 구간에 선택지가 몰려도, 조합 수가 많은 선택지만 과도하게 자주 나오지 않도록 보정합니다.
@@ -1236,7 +1253,9 @@ $("confirmStartButton").addEventListener("click", () => {
     safePositiveTurns: 0,
     choices: generateChoices(
       null,
-      state.threeChoiceMode && state.threeChoiceUnlocked ? 3 : 2
+      state.threeChoiceMode && state.threeChoiceUnlocked ? 3 : 2,
+      false,
+      amount
     ),
     forcedColor: null
   };
@@ -1475,7 +1494,8 @@ function chooseOption(index) {
   game.choices = generateChoices(
     game.choices,
     game.threeChoiceMode ? 3 : 2,
-    game.safePositiveTurns > 0
+    game.safePositiveTurns > 0,
+    game.money
   );
 
   const bonusStatus = [
@@ -1510,7 +1530,8 @@ $("rerollButton").addEventListener("click", () => {
   game.choices = generateChoices(
     game.choices,
     game.threeChoiceMode ? 3 : 2,
-    game.safePositiveTurns > 0
+    game.safePositiveTurns > 0,
+    game.money
   );
 
   // 금액과 강제 색상은 유지
