@@ -244,37 +244,55 @@ const RISKY_CHOICES = [
     bonusTurns: 5
   },
   {
-    id: "cash100",
-    effect: 0,
-    amountEffect: 100,
-    title: "+100원",
-    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
-    penaltyChance: 0,
-    penaltyType: "cashRisk"
-  },
-  {
-    id: "cash250",
-    effect: 0,
-    amountEffect: 250,
-    title: "+250원",
-    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
-    penaltyChance: 0,
-    penaltyType: "cashRisk"
-  },
-  {
-    id: "cash500",
-    effect: 0,
-    amountEffect: 500,
-    title: "+500원",
-    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
-    penaltyChance: 0,
-    penaltyType: "cashRisk"
-  },
-  {
     id: "cash1000",
     effect: 0,
     amountEffect: 1000,
     title: "+1,000원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash2000",
+    effect: 0,
+    amountEffect: 2000,
+    title: "+2,000원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash3500",
+    effect: 0,
+    amountEffect: 3500,
+    title: "+3,500원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash5000",
+    effect: 0,
+    amountEffect: 5000,
+    title: "+5,000원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash7500",
+    effect: 0,
+    amountEffect: 7500,
+    title: "+7,500원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash10000",
+    effect: 0,
+    amountEffect: 10000,
+    title: "+10,000원",
     penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
     penaltyChance: 0,
     penaltyType: "cashRisk"
@@ -355,7 +373,15 @@ function getCashRisk(choice, currentMoney) {
     lossFraction = 1;
   }
 
-  const chance = Math.max(0, Math.min(100, (gain / after / lossFraction) * 100));
+  // 손실 확률을 손익분기점보다 조금만 낮춰 보상을 체감하게 하되,
+  // 기대 이익은 현재 잔액의 0.3%와 고정 보상액의 3% 중 작은 값으로 제한합니다.
+  const breakEvenChance = (gain / after / lossFraction) * 100;
+  const allowedExpectedGain = Math.min(money * 0.003, gain * 0.03);
+  const chanceReduction = (allowedExpectedGain / (after * lossFraction)) * 100;
+  const chance = Math.max(
+    0,
+    Math.min(100, breakEvenChance - chanceReduction)
+  );
   return { penaltyType, chance, lossFraction };
 }
 
