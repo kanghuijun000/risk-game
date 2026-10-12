@@ -341,13 +341,13 @@ function getCashRisk(choice, currentMoney) {
   let penaltyType;
   let lossFraction;
 
-  if (gainRatio <= 0.10) {
+  if (gainRatio < 0.10) {
     penaltyType = "loss10";
     lossFraction = 0.10;
-  } else if (gainRatio <= 0.25) {
+  } else if (gainRatio < 0.25) {
     penaltyType = "loss25";
     lossFraction = 0.25;
-  } else if (gainRatio <= 0.50) {
+  } else if (gainRatio < 0.50) {
     penaltyType = "loss50";
     lossFraction = 0.50;
   } else {
