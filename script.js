@@ -391,6 +391,7 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
   if (money <= 1000 && choice.effect < 0) return false;
   if (isPercentLoss && choice.penaltyChance > 0 && moneyAfterEffect <= 1000) return false;
   return true;
+}
 
 function estimateChoiceValue(choice, currentMoney = null) {
   const money = Number(currentMoney);
