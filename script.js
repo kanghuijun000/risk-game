@@ -244,6 +244,42 @@ const RISKY_CHOICES = [
     bonusTurns: 5
   },
   {
+    id: "cash100",
+    effect: 0,
+    amountEffect: 100,
+    title: "+100원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash250",
+    effect: 0,
+    amountEffect: 250,
+    title: "+250원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash500",
+    effect: 0,
+    amountEffect: 500,
+    title: "+500원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
+    id: "cash1000",
+    effect: 0,
+    amountEffect: 1000,
+    title: "+1,000원",
+    penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
+    penaltyChance: 0,
+    penaltyType: "cashRisk"
+  },
+  {
     id: "rare25",
     effect: 25,
     title: "+25%",
@@ -291,13 +327,66 @@ function samePair(a, b) {
   return aIds === bIds;
 }
 
+function getCashRisk(choice, currentMoney) {
+  const money = Math.max(0, Number(currentMoney) || 0);
+  const amount = Math.max(0, Number(choice.amountEffect) || 0);
+  const after = clampMoney(Math.round(money + amount));
+  const gain = Math.max(0, after - money);
+
+  if (gain <= 0 || after <= 0) {
+    return { penaltyType: "totalLoss", chance: 0, lossFraction: 1 };
+  }
+
+  const gainRatio = gain / after;
+  let penaltyType;
+  let lossFraction;
+
+  if (gainRatio <= 0.10) {
+    penaltyType = "loss10";
+    lossFraction = 0.10;
+  } else if (gainRatio <= 0.25) {
+    penaltyType = "loss25";
+    lossFraction = 0.25;
+  } else if (gainRatio <= 0.50) {
+    penaltyType = "loss50";
+    lossFraction = 0.50;
+  } else {
+    penaltyType = "totalLoss";
+    lossFraction = 1;
+  }
+
+  const chance = Math.max(0, Math.min(100, (gain / after / lossFraction) * 100));
+  return { penaltyType, chance, lossFraction };
+}
+
+function getChoicePenaltyText(choice, currentMoney) {
+  if (choice.penaltyType !== "cashRisk") {
+    return choice.penalty || "패널티: 없음";
+  }
+
+  const risk = getCashRisk(choice, currentMoney);
+  const chance = (Math.round(risk.chance * 10) / 10).toFixed(1);
+  if (risk.penaltyType === "totalLoss") {
+    return `패널티: ${chance}% 확률로 전액 손실`;
+  }
+
+  const lossPercent = {
+    loss10: 10,
+    loss25: 25,
+    loss50: 50
+  }[risk.penaltyType];
+  return `패널티: ${chance}% 확률로 ${lossPercent}% 손실`;
+}
+
 function isChoiceAvailableAtMoney(choice, currentMoney) {
   const money = Number(currentMoney);
   if (!Number.isFinite(money) || money <= 0) return true;
   const baseMultiplier = choice.effect < 0
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
-  const moneyAfterEffect = Math.round(money * baseMultiplier);
+  const moneyAfterEffect = choice.amountEffect != null
+    ? clampMoney(Math.round(money + Number(choice.amountEffect || 0)))
+    : Math.round(money * baseMultiplier);
   const isPercentLoss = ["loss10", "loss25", "loss50"].includes(choice.penaltyType);
   if (money <= 1000 && choice.effect < 0) return false;
   if (isPercentLoss && choice.penaltyChance > 0 && moneyAfterEffect <= 1000) return false;
@@ -307,6 +396,19 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
 function estimateChoiceValue(choice, currentMoney = null) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
+
+  if (choice.penaltyType === "cashRisk" && choice.amountEffect != null) {
+    if (!hasMoney) return 0;
+    const moneyAfterEffect = clampMoney(
+      Math.round(money + Number(choice.amountEffect || 0))
+    );
+    const risk = getCashRisk(choice, money);
+    const expectedFinal = moneyAfterEffect * (
+      1 - (risk.chance / 100) * risk.lossFraction
+    );
+    return (expectedFinal / money - 1) * 100;
+  }
+
   if (hasMoney && money <= 1000 && choice.effect < 0) return -100;
   const baseMultiplier = choice.effect < 0
     ? 1 - Math.abs(choice.effect) / 100
@@ -1325,7 +1427,7 @@ function renderGame() {
 
     item.color.textContent = item.colorName.toUpperCase();
     item.title.textContent = choice.title;
-    item.penalty.textContent = choice.penalty || "패널티: 없음";
+    item.penalty.textContent = getChoicePenaltyText(choice, game.money);
 
     const blocked = Boolean(
       game.forcedColor && game.forcedColor !== item.colorName
@@ -1336,7 +1438,7 @@ function renderGame() {
 
     item.button.setAttribute(
       "aria-label",
-      `${item.label} ${choice.title}. ${choice.penalty}`
+      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money)}`
     );
   });
 
@@ -1363,19 +1465,26 @@ function losePercent(percent) {
   );
 }
 
-function applyPenalty(choice, selectedColor) {
+function applyPenalty(choice, selectedColor, beforeMoney = null) {
   const game = state.activeGame;
   if (!game) return "";
 
+  const cashRisk = choice.penaltyType === "cashRisk"
+    ? getCashRisk(choice, beforeMoney == null ? game.money : beforeMoney)
+    : null;
+  const effectivePenaltyType = cashRisk
+    ? cashRisk.penaltyType
+    : choice.penaltyType;
   const isLossPenalty = [
     "loss10",
     "loss25",
     "loss50",
     "totalLoss"
-  ].includes(choice.penaltyType);
+  ].includes(effectivePenaltyType);
 
-  const effectiveChance =
-    isLossPenalty && game.reduceLossTurns > 0
+  const effectiveChance = cashRisk
+    ? cashRisk.chance
+    : isLossPenalty && game.reduceLossTurns > 0
       ? choice.penaltyChance * 0.7
       : choice.penaltyChance;
 
@@ -1385,7 +1494,7 @@ function applyPenalty(choice, selectedColor) {
       : "패널티가 발생하지 않았습니다.";
   }
 
-  switch (choice.penaltyType) {
+  switch (effectivePenaltyType) {
     case "loss10":
       losePercent(10);
       return game.money === 0
@@ -1447,7 +1556,11 @@ function chooseOption(index) {
   const before = game.money;
 
   // 기본 효과를 먼저 적용하고, 그다음 패널티를 판정
-  if (choice.effect < 0) {
+  if (choice.amountEffect != null) {
+    game.money = clampMoney(
+      Math.round(game.money + Number(choice.amountEffect || 0))
+    );
+  } else if (choice.effect < 0) {
     losePercent(Math.abs(choice.effect));
   } else {
     game.money = clampMoney(
@@ -1460,7 +1573,7 @@ function chooseOption(index) {
     return;
   }
 
-  const resultMessage = applyPenalty(choice, color);
+  const resultMessage = applyPenalty(choice, color, before);
 
   if (game.money <= 0) {
     finishGame("게임 금액 소진");
