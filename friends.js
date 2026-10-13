@@ -421,7 +421,7 @@
       }
       await syncMyPresence(true);
       await Promise.all([loadFriends(), loadRequests()]);
-      setMessage("친구 목록과 받은 친구 요청을 새로고침했습니다.");
+      setMessage("");
     } catch (error) {
       console.error("친구 목록 수동 새로고침 실패:", error);
       setMessage("새로고침에 실패했습니다: " + String(error?.message || "알 수 없는 오류"), true);
