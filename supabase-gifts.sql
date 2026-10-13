@@ -1,10 +1,12 @@
 -- Risk Game 친구 선물 기능: Supabase Dashboard > SQL Editor에서 이 파일 전체를 한 번 실행하세요.
 alter table public.profiles add column if not exists current_budget bigint not null default 10000;
 alter table public.profiles add column if not exists last_seen_at timestamptz;
+alter table public.friend_gifts add column if not exists sender_code text;
 create table if not exists public.friend_gifts(id uuid primary key default gen_random_uuid(),sender_id uuid not null references auth.users(id) on delete cascade,receiver_id uuid not null references auth.users(id) on delete cascade,sender_name text not null check(char_length(sender_name) between 1 and 20),amount bigint not null check(amount>0),status text not null default 'pending' check(status in ('pending','accepted')),created_at timestamptz not null default now(),accepted_at timestamptz,constraint friend_gifts_no_self check(sender_id<>receiver_id));
 -- 이전 버전의 금액 상한 제약도 제거해 큰 금액 선물을 허용합니다.
 alter table public.friend_gifts drop constraint if exists friend_gifts_amount_check;
 alter table public.friend_gifts add constraint friend_gifts_amount_check check (amount > 0);
+update public.friend_gifts g set sender_code = p.friend_code from public.profiles p where p.id = g.sender_id and g.sender_code is null;
 create index if not exists friend_gifts_receiver_created_idx on public.friend_gifts(receiver_id,created_at desc);
 create index if not exists friend_gifts_sender_created_idx on public.friend_gifts(sender_id,created_at desc);
 alter table public.friend_gifts enable row level security;
@@ -24,7 +26,7 @@ begin
  if not found then raise exception '받는 사람의 프로필을 찾을 수 없습니다.';end if;
  if coalesce(sender_profile.current_budget,0)<p_amount then raise exception '온라인 예산이 부족합니다. 친구 목록을 새로고침한 뒤 다시 시도하세요.';end if;
  update public.profiles set current_budget=current_budget-p_amount where id=sender;
- return query insert into public.friend_gifts(sender_id,receiver_id,sender_name,amount) values(sender,p_receiver_id,sender_profile.display_name,p_amount) returning friend_gifts.id,friend_gifts.amount,sender_profile.current_budget-p_amount;
+ return query insert into public.friend_gifts(sender_id,receiver_id,sender_name,sender_code,amount) values(sender,p_receiver_id,sender_profile.display_name,sender_profile.friend_code,p_amount) returning friend_gifts.id,friend_gifts.amount,sender_profile.current_budget-p_amount;
 end;$gift$;
 create or replace function public.accept_risk_game_gift(p_gift_id uuid) returns table(gift_id uuid,amount bigint,sender_name text) language plpgsql security definer set search_path='' as $claim$
 declare gift public.friend_gifts%rowtype;
