@@ -872,6 +872,11 @@ function createProfile(name) {
 let profile = loadProfile();
 let state = loadState();
 window.riskGameGetBudget = () => state.budget;
+window.riskGameChangeBudget = delta => {
+  const change=Number(delta);if(!Number.isSafeInteger(change))return false;
+  const nextBudget=Number(state.budget)+change;if(!Number.isFinite(nextBudget)||nextBudget<0)return false;
+  state.budget=Math.floor(nextBudget);saveState();updateAll();return true;
+};
 window.riskGameGetState = () => JSON.parse(JSON.stringify(state));
 window.riskGameApplyCloudState = cloudState => {
   if (!cloudState || typeof cloudState !== "object" || Array.isArray(cloudState)) return false;
