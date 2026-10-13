@@ -29,9 +29,54 @@
   let lastPresenceSyncAt = 0;
 
 
+  function friendRequestSeenStorageKey() {
+    return currentUser ? "risk-game-seen-friend-requests:" + currentUser.id : "";
+  }
+
+  function getSeenFriendRequestIds() {
+    const key = friendRequestSeenStorageKey();
+    if (!key) return new Set();
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "[]");
+      return new Set(Array.isArray(saved) ? saved.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function updateFriendRequestDot(show) {
+    const dot = $("friendRequestNotificationDot");
+    const button = $("openNotificationsButton");
+    if (dot) dot.classList.toggle("hidden", !show);
+    if (button) button.setAttribute("aria-label", show ? "알림, 새 친구 요청 있음" : "알림 열기");
+  }
+
+  function markFriendRequestsSeen(ids = latestRequestIds) {
+    const key = friendRequestSeenStorageKey();
+    if (!key) {
+      updateFriendRequestDot(false);
+      return;
+    }
+    const seen = getSeenFriendRequestIds();
+    ids.forEach(id => seen.add(String(id)));
+    try { localStorage.setItem(key, JSON.stringify(Array.from(seen))); } catch {}
+    updateFriendRequestDot(false);
+  }
+
   function refreshFriendRequestDot(requests) {
-    // 알림 창은 별도 모달에서 표시하며, 친구 버튼에는 알림 점을 표시하지 않습니다.
     latestRequestIds = requests.map(request => String(request.id));
+    const requestsModal = $("friendRequestsModal");
+    if (!client || !currentUser) {
+      updateFriendRequestDot(false);
+      return;
+    }
+    if (requestsModal && !requestsModal.classList.contains("hidden")) {
+      // 알림 창을 보고 있을 때 도착한 요청도 확인한 것으로 처리합니다.
+      markFriendRequestsSeen(latestRequestIds);
+      return;
+    }
+    const seen = getSeenFriendRequestIds();
+    updateFriendRequestDot(latestRequestIds.some(id => !seen.has(id)));
   }
 
   function withTimeout(promise, label, milliseconds = 12000) {
@@ -605,6 +650,8 @@
     const closeRequestsModal = () => requestsModal?.classList.add("hidden");
     $("openNotificationsButton").addEventListener("click", async () => {
       requestsModal?.classList.remove("hidden");
+      // 알림 창을 열면 현재까지 도착한 요청의 빨간 점을 즉시 지웁니다.
+      markFriendRequestsSeen();
       if (!configured) {
         const list = $("friendRequests");
         if (list) {
@@ -624,12 +671,19 @@
         console.error("알림의 친구 요청 불러오기 실패:", error);
       });
     });
-    $("closeFriendRequestsModal").addEventListener("click", closeRequestsModal);
+    const closeAndRefreshRequestDot = () => {
+      closeRequestsModal();
+      const seen = getSeenFriendRequestIds();
+      updateFriendRequestDot(latestRequestIds.some(id => !seen.has(id)));
+    };
+    $("closeFriendRequestsModal").addEventListener("click", closeAndRefreshRequestDot);
     requestsModal?.addEventListener("click", event => {
-      if (event.target === requestsModal) closeRequestsModal();
+      if (event.target === requestsModal) closeAndRefreshRequestDot();
     });
     document.addEventListener("keydown", event => {
-      if (event.key === "Escape") closeRequestsModal();
+      if (event.key === "Escape" && requestsModal && !requestsModal.classList.contains("hidden")) {
+        closeAndRefreshRequestDot();
+      }
     });
 
     window.addEventListener("risk-game-initial-profile-created", async () => {
