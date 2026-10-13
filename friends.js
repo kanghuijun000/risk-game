@@ -411,7 +411,7 @@
   async function sendGift(){
     if(!selectedGiftFriend||busy||!client||!currentUser)return;
     const raw=$("giftAmountInput").value.trim(),amount=Number(raw),budget=Number(typeof window.riskGameGetBudget==="function"?window.riskGameGetBudget():0);
-    if(!raw||!Number.isSafeInteger(amount)||amount<=0||amount>9000000000000){$("giftModalError").textContent="1원부터 9조 원까지의 정수 금액을 입력하세요.";return;}
+    if(!raw||!Number.isSafeInteger(amount)||amount<=0){$("giftModalError").textContent="1원 이상의 안전한 정수 금액을 입력하세요.";return;}
     if(amount>budget){$("giftModalError").textContent="보유 예산보다 많이 선물할 수 없습니다.";return;}
     setBusy(true);$("giftConfirmButton").disabled=true;$("giftModalError").textContent="";
     try{if(!(await syncMyPresence(true)))throw new Error("예산 동기화에 실패했습니다. 인터넷 연결을 확인하고 다시 시도하세요.");const {error}=await client.rpc("send_risk_game_gift",{p_receiver_id:selectedGiftFriend.id,p_amount:amount});if(error)throw error;
