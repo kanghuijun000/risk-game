@@ -1720,3 +1720,15 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
   .manual-intro h2 { font-size: 21px; }
   .manual-card { padding: 13px; }
 }
+
+/* 친구에게 선물하기 */
+.friend-row-actions{display:flex;align-items:center;flex:0 0 auto;gap:6px}
+.friend-gift-button,.friend-gift-claim-button{min-height:38px;padding:8px 11px;border:1px solid rgba(48,196,141,.45);border-radius:10px;background:rgba(48,196,141,.13);color:#69e6b6;font-size:12px;font-weight:800;white-space:nowrap}
+.friend-gift-button:disabled,.friend-remove-button:disabled{opacity:.55}
+.friend-gift-modal-card{width:min(100%,390px)}
+.friend-gift-modal-card>.muted{margin:10px 0 16px;font-size:13px;line-height:1.55}
+.friend-gift-notification-row{align-items:center}
+.friend-gift-amount{color:#69e6b6!important;font-weight:800}
+.friend-gift-claim-button{flex:0 0 auto;min-width:58px}
+.friend-gift-claim-button.is-claimed{min-width:38px;border-color:#747b87;background:rgba(133,139,152,.16);color:#9299a5;cursor:default;opacity:.9}
+@media(max-width:390px){.friend-row{gap:7px;padding:10px}.friend-row-actions{gap:4px}.friend-gift-button,.friend-remove-button{padding:7px 8px}}
