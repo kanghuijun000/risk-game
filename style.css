@@ -203,18 +203,6 @@ main {
 }
 
 
-.friend-request-notification-dot {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 0 2px var(--surface);
-  pointer-events: none;
-}
-
 .menu-button:active, .choice-card:active, .wide-button:active {
   transform: scale(.985);
 }
@@ -1388,7 +1376,7 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
 /* In-app manual */
 .home-manual-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin: 0 0 2px;
 }
 .manual-open-button {
@@ -1406,6 +1394,15 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
   font-weight: 800;
 }
 .manual-open-button:active { transform: scale(.98); }
+.notification-open-button { margin-right: auto; }
+.friend-request-modal-card {
+  width: min(100%, 480px);
+  max-height: min(82vh, 680px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.friend-requests-list { margin-top: 16px; }
+.friend-requests-list .friend-request-row { gap: 10px; }
 .manual-heading { margin-bottom: 16px; }
 .manual-card {
   margin-bottom: 13px;
