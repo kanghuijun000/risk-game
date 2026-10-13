@@ -9,7 +9,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=22">
+  <link rel="stylesheet" href="./style.css?v=23">
 </head>
 <body>
 <div class="app">
@@ -60,6 +60,7 @@
 
     <section id="homeScreen" class="screen hidden">
       <div class="home-manual-actions">
+        <button id="openNotificationsButton" class="manual-open-button notification-open-button" type="button" aria-label="알림 열기">🔔 알림</button>
         <button id="openManualButton" class="manual-open-button" type="button" data-screen="manualScreen" aria-label="설명서 열기">📖 설명서</button>
       </div>
       <div class="hero">
@@ -106,7 +107,6 @@
         </button>
         <button id="friendMenuButton" class="menu-button" data-screen="friendScreen" aria-label="친구">
           <span class="menu-icon">👥</span><span>친구</span>
-          <span id="friendRequestNotificationDot" class="friend-request-notification-dot hidden" aria-hidden="true"></span>
         </button>
       </div>
     </section>
@@ -221,7 +221,7 @@
       <article class="panel manual-card">
         <div class="manual-feature-list">
           <div><span>📋</span><p><strong>결과 내역</strong><br>최근 정산한 게임 최대 20판의 시작 금액, 최종 금액, 손익 등을 확인할 수 있습니다.</p></div>
-          <div><span>👥</span><p><strong>친구</strong><br>이름과 4자리 고유 코드로 친구 요청을 보낼 수 있고, 받은 요청은 수락하거나 거절할 수 있습니다. 새 친구 요청이 있으면 메인 화면의 친구 버튼에 빨간 점이 표시됩니다. 친구 화면에 들어가면 확인한 요청의 빨간 점이 사라지고, 새 요청이 오면 다시 표시됩니다.</p></div>
+          <div><span>👥</span><p><strong>친구</strong><br>이름과 4자리 고유 코드로 친구 요청을 보낼 수 있고, 받은 요청은 수락하거나 거절할 수 있습니다. 받은 친구 요청은 메인 화면 왼쪽 상단의 알림 버튼을 눌러 확인하고 수락하거나 거절할 수 있습니다.</p></div>
           <div><span>⚙️</span><p><strong>설정</strong><br>이름 변경, 복구 비밀번호 설정·변경, 배경색, 진동, 게임 초기화 및 계정 관련 기능을 관리합니다.</p></div>
           <div><span>💾</span><p><strong>자동 저장과 기기 변경</strong><br>진행 상황은 이 기기에 자동 저장됩니다. 친구 기능의 온라인 계정 연결과 게임 예산·은행 데이터 저장은 별개일 수 있으므로, 기기를 바꾸기 전에는 계정 복구 설정을 확인하세요.</p></div>
         </div>
@@ -608,16 +608,6 @@
         <p id="friendMessage" class="friend-message" role="status"></p>
       </div>
 
-      <div class="friend-list-section friend-requests-section">
-        <div class="friend-list-heading">
-          <h3>받은 친구 요청</h3>
-          <span class="muted">수락해야 친구가 됩니다</span>
-        </div>
-        <div id="friendRequests" class="friend-list">
-          <p class="muted friend-empty">온라인 연결 후 받은 친구 요청을 확인할 수 있습니다.</p>
-        </div>
-      </div>
-
       <div class="friend-list-section">
         <div class="friend-list-heading">
           <h3>친구 목록</h3>
@@ -634,6 +624,18 @@
   </main>
 
   <footer class="footer">진행 상황은 이 기기에 자동 저장됩니다.</footer>
+</div>
+
+<div id="friendRequestsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="friendRequestsModalTitle">
+  <div class="modal-card friend-request-modal-card">
+    <button id="closeFriendRequestsModal" class="modal-close" type="button" aria-label="알림 닫기">✕</button>
+    <p class="eyebrow">NOTIFICATIONS</p>
+    <h2 id="friendRequestsModalTitle">친구 요청</h2>
+    <p class="muted">받은 친구 요청을 수락하거나 거절할 수 있습니다.</p>
+    <div id="friendRequests" class="friend-list friend-requests-list">
+      <p class="muted friend-empty">온라인 연결 후 받은 친구 요청을 확인할 수 있습니다.</p>
+    </div>
+  </div>
 </div>
 
 <div id="moneyModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
@@ -698,7 +700,7 @@
 <script src="./script.js?v=45" defer></script>
 <script src="./supabase-config.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="./friends.js?v=20" defer></script>
+<script src="./friends.js?v=21" defer></script>
 <script src="./recovery.js?v=11" defer></script>
 </body>
 </html>
