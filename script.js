@@ -543,9 +543,9 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const available = fresh.length ? fresh : combinations;
   // 기대값이 높은 선택지를 우선 고르는 전략에서도 유리함이 누적되지 않도록,
   // 조합의 평균이 아니라 가장 높은 선택지 기대값(bestValue)을 0% 부근에 맞춥니다.
-  // 턴이 길어질수록 선택 편향이 누적되는 것을 줄이기 위해,
-  // 선택지 간 기대값 차이를 기존 4%p에서 2%p로 더 엄격하게 제한합니다.
-  const maxSpread = 2;
+  // 선택지 조합의 다양성을 확보하면서도 지나치게 불공정한 조합은 피합니다.
+  // 2%p 제한은 후보 조합을 과도하게 줄여 선택지가 비슷해지는 문제가 있어 4%p로 복원합니다.
+  const maxSpread = 4;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
   const score = item =>
