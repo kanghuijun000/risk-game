@@ -29,47 +29,9 @@
   let lastPresenceSyncAt = 0;
 
 
-  function friendRequestSeenStorageKey() {
-    return currentUser ? "risk-game-seen-friend-requests:" + currentUser.id : "";
-  }
-
-  function getSeenFriendRequestIds() {
-    const key = friendRequestSeenStorageKey();
-    if (!key) return new Set();
-    try {
-      const saved = JSON.parse(localStorage.getItem(key) || "[]");
-      return new Set(Array.isArray(saved) ? saved.map(String) : []);
-    } catch {
-      return new Set();
-    }
-  }
-
-  function markFriendRequestsSeen(ids = latestRequestIds) {
-    const key = friendRequestSeenStorageKey();
-    if (!key) return;
-    const seen = getSeenFriendRequestIds();
-    ids.forEach(id => seen.add(String(id)));
-    try { localStorage.setItem(key, JSON.stringify(Array.from(seen))); } catch {}
-    updateFriendRequestDot(false);
-  }
-
-  function updateFriendRequestDot(show) {
-    const dot = $("friendRequestNotificationDot");
-    const button = $("friendMenuButton");
-    if (dot) dot.classList.toggle("hidden", !show);
-    if (button) button.setAttribute("aria-label", show ? "친구, 새 친구 요청 있음" : "친구");
-  }
-
   function refreshFriendRequestDot(requests) {
+    // 알림 창은 별도 모달에서 표시하며, 친구 버튼에는 알림 점을 표시하지 않습니다.
     latestRequestIds = requests.map(request => String(request.id));
-    const friendScreen = $("friendScreen");
-    if (friendScreen && !friendScreen.classList.contains("hidden")) {
-      // 친구 화면을 보고 있는 동안 도착한 요청은 확인한 것으로 처리합니다.
-      markFriendRequestsSeen(latestRequestIds);
-      return;
-    }
-    const seen = getSeenFriendRequestIds();
-    updateFriendRequestDot(latestRequestIds.some(id => !seen.has(id)));
   }
 
   function withTimeout(promise, label, milliseconds = 12000) {
@@ -262,7 +224,6 @@
 
     if (!client || !currentUser) {
       latestRequestIds = [];
-      updateFriendRequestDot(false);
       const signature = "offline";
       if (renderedRequestsSignature !== signature) {
         const empty = document.createElement("p");
@@ -631,7 +592,6 @@
       if (event.key === "Enter") addFriend();
     });
     $("friendMenuButton").addEventListener("click", async () => {
-      markFriendRequestsSeen();
       if (!configured) {
         setMessage("온라인 연결 설정을 확인해야 합니다.", true);
       } else if (currentUser) {
@@ -639,6 +599,37 @@
       } else {
         await reconnectOnline();
       }
+    });
+
+    const requestsModal = $("friendRequestsModal");
+    const closeRequestsModal = () => requestsModal?.classList.add("hidden");
+    $("openNotificationsButton").addEventListener("click", async () => {
+      requestsModal?.classList.remove("hidden");
+      if (!configured) {
+        const list = $("friendRequests");
+        if (list) {
+          const message = document.createElement("p");
+          message.className = "muted friend-empty";
+          message.textContent = "온라인 연결 설정을 확인해야 친구 요청을 불러올 수 있습니다.";
+          list.replaceChildren(message);
+        }
+        return;
+      }
+      if (currentUser) {
+        await refreshCloudData();
+      } else {
+        await reconnectOnline();
+      }
+      await loadRequests().catch(error => {
+        console.error("알림의 친구 요청 불러오기 실패:", error);
+      });
+    });
+    $("closeFriendRequestsModal").addEventListener("click", closeRequestsModal);
+    requestsModal?.addEventListener("click", event => {
+      if (event.target === requestsModal) closeRequestsModal();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeRequestsModal();
     });
 
     window.addEventListener("risk-game-initial-profile-created", async () => {
