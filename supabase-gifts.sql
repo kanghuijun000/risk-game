@@ -2,6 +2,9 @@
 alter table public.profiles add column if not exists current_budget bigint not null default 10000;
 alter table public.profiles add column if not exists last_seen_at timestamptz;
 create table if not exists public.friend_gifts(id uuid primary key default gen_random_uuid(),sender_id uuid not null references auth.users(id) on delete cascade,receiver_id uuid not null references auth.users(id) on delete cascade,sender_name text not null check(char_length(sender_name) between 1 and 20),amount bigint not null check(amount>0),status text not null default 'pending' check(status in ('pending','accepted')),created_at timestamptz not null default now(),accepted_at timestamptz,constraint friend_gifts_no_self check(sender_id<>receiver_id));
+-- 이전 버전의 금액 상한 제약도 제거해 큰 금액 선물을 허용합니다.
+alter table public.friend_gifts drop constraint if exists friend_gifts_amount_check;
+alter table public.friend_gifts add constraint friend_gifts_amount_check check (amount > 0);
 create index if not exists friend_gifts_receiver_created_idx on public.friend_gifts(receiver_id,created_at desc);
 create index if not exists friend_gifts_sender_created_idx on public.friend_gifts(sender_id,created_at desc);
 alter table public.friend_gifts enable row level security;
