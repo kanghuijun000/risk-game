@@ -548,24 +548,28 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const maxSpread = 4;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
-  const score = item =>
-    10 * Math.abs(item.bestValue) +
-    0.1 * item.spread +
-    0.1 * Math.abs(item.averageValue);
+  const score = item => {
+    const hasFixedAmount = item.choices.some(choice => choice.amountEffect != null);
+    const hasNoPenaltyZero = item.choices.some(choice =>
+      choice.id === "safeNoPenalty"
+    );
+    // 평균 기대값을 중심으로 균형을 잡습니다. 최고 기대값만 0에 맞추면
+    // 0%·패널티 없음 조합이 과도하게 유리해지고 고정 금액 선택지가 밀려납니다.
+    return 10 * Math.abs(item.averageValue) +
+      0.1 * item.spread +
+      0.1 * Math.abs(item.bestValue) +
+      (hasNoPenaltyZero ? 1 : 0) -
+      (hasFixedAmount ? 2 : 0);
+  };
 
   if (eligible.length) {
-    // 최고 기대값이 거의 중립인 조합을 가장 우선합니다.
-    const neutralBest = eligible.filter(item => Math.abs(item.bestValue) <= 0.05);
-    if (neutralBest.length) {
-      eligible = neutralBest;
-    } else {
-      const bestScore = Math.min(...eligible.map(score));
-      eligible = eligible.filter(item => score(item) <= bestScore + 0.05);
-    }
+    // 균형이 비슷한 조합을 조금 넓게 허용해 선택지 유형이 한쪽으로 쏠리지 않게 합니다.
+    const bestScore = Math.min(...eligible.map(score));
+    eligible = eligible.filter(item => score(item) <= bestScore + 1.5);
   } else {
-    // 해당 잔액에서 2%p 이내 조합이 없으면, 기대값 편향을 최소화한 조합을 사용합니다.
+    // 해당 잔액에서 균형 잡힌 조합이 없으면 가장 가까운 조합을 사용합니다.
     const bestScore = Math.min(...available.map(score));
-    eligible = available.filter(item => score(item) <= bestScore + 0.05);
+    eligible = available.filter(item => score(item) <= bestScore + 1.5);
   }
 
   // 특정 가치 구간에 선택지가 몰려도, 조합 수가 많은 선택지만 과도하게 자주 나오지 않도록 보정합니다.
@@ -588,6 +592,10 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
         (sum, choice) => sum + 1 / occurrenceCount.get(choice.id),
         0
       ) *
+      // 고정 금액 선택지는 조합 후보에 들어왔을 때 실제로 보일 수 있도록 보정합니다.
+      (item.choices.some(choice => choice.amountEffect != null) ? 2.5 : 1) *
+      // 0%·패널티 없음 선택지가 다른 조합을 계속 밀어내지 않도록 빈도를 낮춥니다.
+      (item.choices.some(choice => choice.id === "safeNoPenalty") ? 0.35 : 1) *
       // 희귀 선택지는 기대값을 맞추되, 일반 선택지보다 훨씬 낮은 빈도로 등장시킵니다.
       item.choices.reduce(
         (rarity, choice) => Math.min(
