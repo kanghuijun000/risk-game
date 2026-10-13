@@ -479,9 +479,24 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const unique = new Map();
   pool.forEach(choice => unique.set(choice.id, choice));
-  const candidates = [...unique.values()].filter(choice =>
-    isChoiceAvailableAtMoney(choice, currentMoney)
-  );
+  const candidates = [...unique.values()].filter(choice => {
+    if (!isChoiceAvailableAtMoney(choice, currentMoney)) return false;
+
+    // 잔액에 비해 보너스가 너무 커 전액 손실 확률이 과도한 경우에는 제시하지 않습니다.
+    // 고정 금액 보너스 자체를 없애는 것이 아니라, 감당 가능한 잔액 구간에서만 등장시킵니다.
+    if (
+      choice.penaltyType === "cashRisk" &&
+      Number.isFinite(Number(currentMoney)) &&
+      Number(currentMoney) > 0
+    ) {
+      const cashRisk = getCashRisk(choice, currentMoney);
+      if (cashRisk.penaltyType === "totalLoss" && cashRisk.chance > 40) {
+        return false;
+      }
+    }
+
+    return true;
+  });
   const valueById = new Map(candidates.map(choice => [
     choice.id,
     estimateChoiceValue(choice, currentMoney)
@@ -497,6 +512,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
         choices: picked.slice(),
         spread,
         averageValue: values.reduce((sum, value) => sum + value, 0) / values.length,
+        bestValue: Math.max(...values),
         previous: samePair(picked, previous)
       });
       return;
@@ -525,26 +541,31 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
-  // 두 모드 모두 선택지의 기대값 차이를 4%p 이내로 제한합니다.
+  // 기대값이 높은 선택지를 우선 고르는 전략에서도 유리함이 누적되지 않도록,
+  // 조합의 평균이 아니라 가장 높은 선택지 기대값(bestValue)을 0% 부근에 맞춥니다.
   const maxSpread = 4;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
-  // 기대값 차이가 작은 조합 중에서도 평균 기대값이 0%에 가까운 조합을 우선합니다.
-  // 한 조합의 선택지들이 모두 유리하거나 모두 불리해지는 편향을 줄입니다.
   if (eligible.length) {
-    const nearNeutral = eligible.filter(item => Math.abs(item.averageValue) <= 1);
-    if (nearNeutral.length) {
-      eligible = nearNeutral;
+    const neutralBest = eligible.filter(item => Math.abs(item.bestValue) <= 0.1);
+    if (neutralBest.length) {
+      eligible = neutralBest;
     } else {
-      const score = item => item.spread + 1.5 * Math.abs(item.averageValue);
+      // 중립적인 조합이 없으면, 기대값이 0%에서 가장 가까운 조합을 우선합니다.
+      const score = item =>
+        10 * Math.abs(item.bestValue) +
+        0.1 * item.spread +
+        0.1 * Math.abs(item.averageValue);
       const bestScore = Math.min(...eligible.map(score));
-      eligible = eligible.filter(item => score(item) <= bestScore + 0.5);
+      eligible = eligible.filter(item => score(item) <= bestScore + 0.1);
     }
   } else {
-    // 기준을 만족하는 조합이 없으면 기대값 차이와 평균 편향을 함께 최소화합니다.
-    const score = item => item.spread + 1.5 * Math.abs(item.averageValue);
+    const score = item =>
+      10 * Math.abs(item.bestValue) +
+      0.1 * item.spread +
+      0.1 * Math.abs(item.averageValue);
     const bestScore = Math.min(...available.map(score));
-    eligible = available.filter(item => score(item) <= bestScore + 0.5);
+    eligible = available.filter(item => score(item) <= bestScore + 0.1);
   }
 
   // 특정 가치 구간에 선택지가 몰려도, 조합 수가 많은 선택지만 과도하게 자주 나오지 않도록 보정합니다.
