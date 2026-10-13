@@ -980,9 +980,11 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
 
 
 /* 친구 및 온라인 계정 */
-.friend-account-panel,
-.friend-add-panel {
+.friend-account-panel {
   margin-bottom: 14px;
+}
+.friend-add-panel {
+  margin-top: 8px;
 }
 .friend-account-panel h3,
 .friend-list-heading h3 {
@@ -1032,7 +1034,7 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
 }
 .friend-list-heading {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
@@ -1060,6 +1062,40 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
   opacity: .65;
   cursor: wait;
 }
+.friend-add-open-button,
+.friend-refresh-icon-button {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+}
+.friend-refresh-icon-button {
+  font-size: 23px;
+}
+.friend-add-modal-card {
+  width: min(100%, 390px);
+  max-height: min(86vh, 700px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.friend-add-modal-card > .muted {
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.friend-add-modal-card .friend-add-panel {
+  margin-bottom: 0;
+}
+.friend-add-modal-card .friend-add-panel label:first-child {
+  margin-top: 0;
+}
+
 .friend-list {
   display: grid;
   gap: 9px;
