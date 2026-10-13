@@ -9,7 +9,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=23">
+  <link rel="stylesheet" href="./style.css?v=24">
 </head>
 <body>
 <div class="app">
@@ -60,7 +60,7 @@
 
     <section id="homeScreen" class="screen hidden">
       <div class="home-manual-actions">
-        <button id="openNotificationsButton" class="manual-open-button notification-open-button" type="button" aria-label="알림 열기">🔔 알림</button>
+        <button id="openNotificationsButton" class="manual-open-button notification-open-button" type="button" aria-label="알림 열기">🔔 알림<span id="friendRequestNotificationDot" class="friend-request-notification-dot hidden" aria-hidden="true"></span></button>
         <button id="openManualButton" class="manual-open-button" type="button" data-screen="manualScreen" aria-label="설명서 열기">📖 설명서</button>
       </div>
       <div class="hero">
@@ -700,7 +700,7 @@
 <script src="./script.js?v=45" defer></script>
 <script src="./supabase-config.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="./friends.js?v=21" defer></script>
+<script src="./friends.js?v=22" defer></script>
 <script src="./recovery.js?v=11" defer></script>
 </body>
 </html>
