@@ -376,7 +376,7 @@ function getCashRisk(choice, currentMoney) {
   // 손실 확률을 손익분기점보다 조금만 낮춰 보상을 체감하게 하되,
   // 기대 이익은 현재 잔액의 0.3%와 고정 보상액의 3% 중 작은 값으로 제한합니다.
   const breakEvenChance = (gain / after / lossFraction) * 100;
-  const allowedExpectedGain = Math.min(money * 0.003, gain * 0.03);
+  const allowedExpectedGain = Math.min(money * 0.001, gain * 0.01);
   const chanceReduction = (allowedExpectedGain / (after * lossFraction)) * 100;
   const chance = Math.max(
     0,
@@ -559,7 +559,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       0.1 * item.spread +
       0.1 * Math.abs(item.bestValue) +
       (hasNoPenaltyZero ? 1 : 0) -
-      (hasFixedAmount ? 2 : 0);
+      (hasFixedAmount ? 0.75 : 0);
   };
 
   if (eligible.length) {
@@ -593,7 +593,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
         0
       ) *
       // 고정 금액 선택지는 조합 후보에 들어왔을 때 실제로 보일 수 있도록 보정합니다.
-      (item.choices.some(choice => choice.amountEffect != null) ? 2.5 : 1) *
+      (item.choices.some(choice => choice.amountEffect != null) ? 1.35 : 1) *
       // 0%·패널티 없음 선택지가 다른 조합을 계속 밀어내지 않도록 빈도를 낮춥니다.
       (item.choices.some(choice => choice.id === "safeNoPenalty") ? 0.35 : 1) *
       // 희귀 선택지는 기대값을 맞추되, 일반 선택지보다 훨씬 낮은 빈도로 등장시킵니다.
