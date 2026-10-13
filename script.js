@@ -323,6 +323,15 @@ const RISKY_CHOICES = [
     penaltyChance: 50,
     penaltyType: "totalLoss",
     rarityWeight: 0.005
+  },
+  {
+    id: "ultra100x",
+    effect: 9900,
+    title: "×100배",
+    penalty: "초고위험: 99% 확률로 전액 손실",
+    penaltyChance: 99,
+    penaltyType: "totalLoss",
+    rarityWeight: 0.0005
   }
 ];
 
@@ -355,7 +364,9 @@ function getCashRisk(choice, currentMoney) {
     return { penaltyType: "totalLoss", chance: 0, lossFraction: 1 };
   }
 
-  const gainRatio = gain / after;
+  // 보상액을 '보상 적용 전 잔액'과 비교해야 작은 잔액에서 위험도가 제대로 반영됩니다.
+  // 예: 1,100원에서 1,000원을 받으면 손실 시 1,050원으로 거의 제자리인 50% 손실 대신 전액 손실 위험으로 분류합니다.
+  const gainRatio = gain / Math.max(1, money);
   let penaltyType;
   let lossFraction;
 
@@ -373,8 +384,8 @@ function getCashRisk(choice, currentMoney) {
     lossFraction = 1;
   }
 
-  // 손실 확률을 손익분기점보다 조금만 낮춰 보상을 체감하게 하되,
-  // 기대 이익은 현재 잔액의 0.3%와 고정 보상액의 3% 중 작은 값으로 제한합니다.
+  // 손실 확률을 손익분기점보다 아주 조금 낮춰 보상을 체감하게 하되,
+  // 기대 이익은 현재 잔액의 0.1%와 고정 보상액의 1% 중 작은 값으로 제한합니다.
   const breakEvenChance = (gain / after / lossFraction) * 100;
   const allowedExpectedGain = Math.min(money * 0.001, gain * 0.01);
   const chanceReduction = (allowedExpectedGain / (after * lossFraction)) * 100;
@@ -550,6 +561,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const score = item => {
     const hasFixedAmount = item.choices.some(choice => choice.amountEffect != null);
+    const hasNegativeBonus = item.choices.some(choice => choice.bonusType && choice.effect < 0);
     const hasNoPenaltyZero = item.choices.some(choice =>
       choice.id === "safeNoPenalty"
     );
@@ -559,7 +571,8 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       0.1 * item.spread +
       0.1 * Math.abs(item.bestValue) +
       (hasNoPenaltyZero ? 1 : 0) -
-      (hasFixedAmount ? 0.75 : 0);
+      (hasFixedAmount ? 0.75 : 0) -
+      (hasNegativeBonus ? 0.5 : 0);
   };
 
   if (eligible.length) {
@@ -594,6 +607,8 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       ) *
       // 고정 금액 선택지는 조합 후보에 들어왔을 때 실제로 보일 수 있도록 보정합니다.
       (item.choices.some(choice => choice.amountEffect != null) ? 1.35 : 1) *
+      // 손실을 감수하고 효과를 얻는 음수 효과+보너스 선택지가 사라지지 않도록 출현을 보정합니다.
+      (item.choices.some(choice => choice.bonusType && choice.effect < 0) ? 2 : 1) *
       // 0%·패널티 없음 선택지가 다른 조합을 계속 밀어내지 않도록 빈도를 낮춥니다.
       (item.choices.some(choice => choice.id === "safeNoPenalty") ? 0.35 : 1) *
       // 희귀 선택지는 기대값을 맞추되, 일반 선택지보다 훨씬 낮은 빈도로 등장시킵니다.
