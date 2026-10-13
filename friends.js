@@ -64,7 +64,7 @@
   }
 
   function refreshFriendRequestDot(requests) {
-    latestRequestIds = requests.map(request => String(request.id));
+    latestRequestIds = requests.map(request => String(request.notificationKey || ("request:" + request.id)));
     const requestsModal = $("friendRequestsModal");
     if (!client || !currentUser) {
       updateFriendRequestDot(false);
@@ -98,12 +98,13 @@
 
   function setBusy(value) {
     busy = value;
-    ["addFriendButton", "refreshFriendsButton"]
+    ["addFriendButton", "refreshFriendsButton", "giftConfirmButton"]
       .forEach(id => {
         const button = $(id);
         if (button) button.disabled = value;
       });
-    document.querySelectorAll("#friendRequests button").forEach(button => { button.disabled = value; });
+    document.querySelectorAll("#friendRequests button").forEach(button => { if (!button.classList.contains("is-claimed")) button.disabled = value; });
+    document.querySelectorAll(".friend-row-actions button").forEach(button => { button.disabled = value; });
   }
 
   function localProfile() {
@@ -221,18 +222,21 @@
 
     details.append(nameLine, code, budget);
 
+    const actions = document.createElement("div");
+    actions.className = "friend-row-actions";
+    const gift = document.createElement("button");
+    gift.type = "button"; gift.className = "friend-gift-button"; gift.textContent = "선물하기";
+    gift.setAttribute("aria-label", friend.display_name + " 님에게 선물하기");
+    gift.addEventListener("click", () => openGiftModal(friend));
     const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "friend-remove-button";
-    remove.textContent = "삭제";
+    remove.type = "button"; remove.className = "friend-remove-button"; remove.textContent = "삭제";
     remove.setAttribute("aria-label", friend.display_name + " 친구 삭제");
     remove.addEventListener("click", () => removeFriend(friend.id, friend.display_name));
-
-    row.append(details, remove);
-    return row;
+    actions.append(gift, remove); row.append(details, actions); return row;
   }
 
   function makeRequestRow(request) {
+    if (request.kind === "gift") return makeGiftNotificationRow(request);
     const row = document.createElement("div");
     row.className = "friend-row friend-request-row";
     const details = document.createElement("div");
@@ -263,51 +267,36 @@
     return row;
   }
 
+  function makeGiftNotificationRow(gift) {
+    const row=document.createElement("div");row.className="friend-row friend-gift-notification-row";
+    const details=document.createElement("div");details.className="friend-row-details";
+    const title=document.createElement("strong");title.textContent=gift.sender_name+" 님이 선물을 보냈습니다.";
+    const amount=document.createElement("span");amount.className="friend-gift-amount";amount.textContent=formatFriendMoney(gift.amount);
+    const note=document.createElement("span");note.textContent=gift.status==="accepted"?"받은 선물":"받기 버튼을 누르면 보유 예산에 추가됩니다.";
+    details.append(title,amount,note);
+    const claim=document.createElement("button");claim.type="button";claim.className="friend-gift-claim-button"+(gift.status==="accepted"?" is-claimed":"");
+    claim.textContent=gift.status==="accepted"?"✓":"받기";claim.disabled=busy||gift.status==="accepted";
+    claim.setAttribute("aria-label",gift.status==="accepted"?"이미 받은 선물":gift.sender_name+" 님의 선물 받기");
+    if(gift.status!=="accepted")claim.addEventListener("click",()=>acceptGift(gift));
+    row.append(details,claim);return row;
+  }
   async function loadRequests() {
-    const list = $("friendRequests");
-    if (!list) return;
-
-    if (!client || !currentUser) {
-      latestRequestIds = [];
-      const signature = "offline";
-      if (renderedRequestsSignature !== signature) {
-        const empty = document.createElement("p");
-        empty.className = "muted friend-empty";
-        empty.textContent = "온라인 연결 후 받은 친구 요청을 확인할 수 있습니다.";
-        list.replaceChildren(empty);
-        renderedRequestsSignature = signature;
-      }
-      return;
-    }
-
-    // 새 데이터를 다 가져온 뒤 실제 내용이 바뀐 경우에만 DOM을 갱신합니다.
-    // 주기적인 확인 때마다 요소를 지웠다 다시 만들면 모바일 스크롤이 튀거나 깜빡일 수 있습니다.
-    const { data: requests, error } = await client
-      .from("friend_requests")
-      .select("id, sender_id, sender_name, sender_code, created_at")
-      .eq("receiver_id", currentUser.id)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-
-    const rows = requests || [];
-    refreshFriendRequestDot(rows);
-    const signature = currentUser.id + ":" + JSON.stringify(rows.map(request => [
-      request.id, request.sender_id, request.sender_name, request.sender_code
-    ]));
-    if (signature === renderedRequestsSignature) return;
-
-    const fragment = document.createDocumentFragment();
-    if (rows.length === 0) {
-      const empty = document.createElement("p");
-      empty.className = "muted friend-empty";
-      empty.textContent = "새로운 친구 요청이 없습니다.";
-      fragment.append(empty);
-    } else {
-      rows.forEach(request => fragment.append(makeRequestRow(request)));
-    }
-    list.replaceChildren(fragment);
-    renderedRequestsSignature = signature;
+    const list=$("friendRequests");if(!list)return;
+    if(!client||!currentUser){latestRequestIds=[];const sig="offline";if(renderedRequestsSignature!==sig){const e=document.createElement("p");e.className="muted friend-empty";e.textContent="온라인 연결 후 알림을 확인할 수 있습니다.";list.replaceChildren(e);renderedRequestsSignature=sig;}return;}
+    const {data:requests,error}=await client.from("friend_requests").select("id,sender_id,sender_name,sender_code,created_at").eq("receiver_id",currentUser.id).eq("status","pending").order("created_at",{ascending:true});
+    if(error)throw error;
+    let gifts=[];const gr=await client.from("friend_gifts").select("id,sender_id,receiver_id,sender_name,amount,status,created_at").eq("receiver_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
+    if(gr.error)console.warn("선물 알림 SQL 설정을 확인하세요.",gr.error);else gifts=gr.data||[];
+    const rr=(requests||[]).map(x=>({...x,kind:"request",notificationKey:"request:"+x.id}));
+    const gg=gifts.map(x=>({...x,kind:"gift",notificationKey:"gift:"+x.id}));
+    const rows=[...rr,...gg].sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
+    const pending=[...rr.map(x=>x.notificationKey),...gg.filter(x=>x.status==="pending").map(x=>x.notificationKey)];
+    refreshFriendRequestDot(pending.map(id=>({id})));
+    const sig=currentUser.id+":"+JSON.stringify(rows.map(x=>[x.kind,x.id,x.sender_id,x.sender_name,x.sender_code||"",x.amount||0,x.status||"",x.created_at]));
+    if(sig===renderedRequestsSignature)return;
+    const frag=document.createDocumentFragment();
+    if(!rows.length){const e=document.createElement("p");e.className="muted friend-empty";e.textContent="새로운 알림이 없습니다.";frag.append(e);}else rows.forEach(x=>frag.append(makeRequestRow(x)));
+    list.replaceChildren(frag);renderedRequestsSignature=sig;
   }
 
   async function syncMyPresence(force = false) {
@@ -400,6 +389,31 @@
     }
     list.replaceChildren(fragment);
     renderedFriendsSignature = signature;
+  }
+
+  let selectedGiftFriend=null;
+  function openGiftModal(friend){selectedGiftFriend=friend;$("giftModalTitle").textContent=friend.display_name+" 님에게 선물";$("giftModalDescription").textContent="현재 보유 예산 "+formatFriendMoney(typeof window.riskGameGetBudget==="function"?window.riskGameGetBudget():0);$("giftAmountInput").value="";$("giftModalError").textContent="";$("friendGiftModal").classList.remove("hidden");window.setTimeout(()=>$("giftAmountInput")?.focus(),0);}
+  function closeGiftModal(){$("friendGiftModal")?.classList.add("hidden");selectedGiftFriend=null;$("giftModalError").textContent="";}
+  async function sendGift(){
+    if(!selectedGiftFriend||busy||!client||!currentUser)return;
+    const raw=$("giftAmountInput").value.trim(),amount=Number(raw),budget=Number(typeof window.riskGameGetBudget==="function"?window.riskGameGetBudget():0);
+    if(!raw||!Number.isSafeInteger(amount)||amount<=0||amount>9000000000000){$("giftModalError").textContent="1원부터 9조 원까지의 정수 금액을 입력하세요.";return;}
+    if(amount>budget){$("giftModalError").textContent="보유 예산보다 많이 선물할 수 없습니다.";return;}
+    setBusy(true);$("giftConfirmButton").disabled=true;$("giftModalError").textContent="";
+    try{await syncMyPresence(true);const {error}=await client.rpc("send_risk_game_gift",{p_receiver_id:selectedGiftFriend.id,p_amount:amount});if(error)throw error;
+      if(typeof window.riskGameChangeBudget!=="function"||!window.riskGameChangeBudget(-amount))throw new Error("선물은 전송됐지만 이 기기의 예산을 갱신하지 못했습니다. 새로고침해 확인하세요.");
+      closeGiftModal();await loadFriends();
+    }catch(error){console.error("선물 전송 실패:",error);$("giftModalError").textContent=String(error?.message||"선물 전송에 실패했습니다.");}
+    finally{setBusy(false);if($("giftConfirmButton"))$("giftConfirmButton").disabled=false;}
+  }
+  async function acceptGift(gift){
+    if(!client||!currentUser||busy||gift.status!=="pending")return;setBusy(true);
+    try{const {data,error}=await client.rpc("accept_risk_game_gift",{p_gift_id:gift.id});if(error)throw error;const result=Array.isArray(data)?data[0]:data,amount=Number(result?.amount??gift.amount);
+      if(!Number.isSafeInteger(amount)||amount<=0)throw new Error("선물 금액을 확인할 수 없습니다.");
+      if(typeof window.riskGameChangeBudget!=="function"||!window.riskGameChangeBudget(amount))throw new Error("선물은 처리됐지만 이 기기의 예산을 갱신하지 못했습니다. 새로고침해 확인하세요.");
+      await loadRequests();
+    }catch(error){console.error("선물 받기 실패:",error);setMessage("선물을 받지 못했습니다: "+String(error?.message||"다시 시도하세요."),true);}
+    finally{setBusy(false);}
   }
 
   async function refreshFriendLists() {
@@ -637,6 +651,11 @@
       window.riskGameSupabaseClient = client;
     }
 
+    const giftModal=$("friendGiftModal");
+    $("closeFriendGiftModal").addEventListener("click",closeGiftModal);
+    giftModal?.addEventListener("click",event=>{if(event.target===giftModal)closeGiftModal();});
+    $("giftConfirmButton").addEventListener("click",sendGift);
+    $("giftAmountInput").addEventListener("keydown",event=>{if(event.key==="Enter")sendGift();});
     const friendAddModal = $("friendAddModal");
     const closeFriendAddModal = () => friendAddModal?.classList.add("hidden");
     $("openFriendAddModalButton").addEventListener("click", () => {
@@ -648,9 +667,8 @@
       if (event.target === friendAddModal) closeFriendAddModal();
     });
     document.addEventListener("keydown", event => {
-      if (event.key === "Escape" && friendAddModal && !friendAddModal.classList.contains("hidden")) {
-        closeFriendAddModal();
-      }
+      if(event.key==="Escape"&&giftModal&&!giftModal.classList.contains("hidden"))closeGiftModal();
+      if(event.key==="Escape"&&friendAddModal&&!friendAddModal.classList.contains("hidden"))closeFriendAddModal();
     });
 
     $("addFriendButton").addEventListener("click", addFriend);
