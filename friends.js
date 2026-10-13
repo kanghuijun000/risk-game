@@ -407,7 +407,11 @@
     if (busy) return;
     setBusy(true);
     setMessage("");
-    if (button) button.textContent = "새로고침 중...";
+    if (button) {
+      button.textContent = "↻";
+      button.setAttribute("aria-label", "친구 목록 새로고침 중");
+      button.title = "새로고침 중...";
+    }
     try {
       if (!client || !currentUser) {
         const connected = await reconnectOnline();
@@ -422,7 +426,11 @@
       console.error("친구 목록 수동 새로고침 실패:", error);
       setMessage("새로고침에 실패했습니다: " + String(error?.message || "알 수 없는 오류"), true);
     } finally {
-      if (button) button.textContent = "새로고침";
+      if (button) {
+        button.textContent = "↻";
+        button.setAttribute("aria-label", "친구 목록 새로고침");
+        button.title = "새로고침";
+      }
       setBusy(false);
     }
   }
@@ -628,6 +636,22 @@
       });
       window.riskGameSupabaseClient = client;
     }
+
+    const friendAddModal = $("friendAddModal");
+    const closeFriendAddModal = () => friendAddModal?.classList.add("hidden");
+    $("openFriendAddModalButton").addEventListener("click", () => {
+      friendAddModal?.classList.remove("hidden");
+      window.setTimeout(() => $("friendNameInput")?.focus(), 0);
+    });
+    $("closeFriendAddModal").addEventListener("click", closeFriendAddModal);
+    friendAddModal?.addEventListener("click", event => {
+      if (event.target === friendAddModal) closeFriendAddModal();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && friendAddModal && !friendAddModal.classList.contains("hidden")) {
+        closeFriendAddModal();
+      }
+    });
 
     $("addFriendButton").addEventListener("click", addFriend);
     $("friendNameInput").addEventListener("keydown", event => {
