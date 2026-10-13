@@ -543,29 +543,29 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const available = fresh.length ? fresh : combinations;
   // 기대값이 높은 선택지를 우선 고르는 전략에서도 유리함이 누적되지 않도록,
   // 조합의 평균이 아니라 가장 높은 선택지 기대값(bestValue)을 0% 부근에 맞춥니다.
-  const maxSpread = 4;
+  // 턴이 길어질수록 선택 편향이 누적되는 것을 줄이기 위해,
+  // 선택지 간 기대값 차이를 기존 4%p에서 2%p로 더 엄격하게 제한합니다.
+  const maxSpread = 2;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
+  const score = item =>
+    10 * Math.abs(item.bestValue) +
+    0.1 * item.spread +
+    0.1 * Math.abs(item.averageValue);
+
   if (eligible.length) {
-    const neutralBest = eligible.filter(item => Math.abs(item.bestValue) <= 0.1);
+    // 최고 기대값이 거의 중립인 조합을 가장 우선합니다.
+    const neutralBest = eligible.filter(item => Math.abs(item.bestValue) <= 0.05);
     if (neutralBest.length) {
       eligible = neutralBest;
     } else {
-      // 중립적인 조합이 없으면, 기대값이 0%에서 가장 가까운 조합을 우선합니다.
-      const score = item =>
-        10 * Math.abs(item.bestValue) +
-        0.1 * item.spread +
-        0.1 * Math.abs(item.averageValue);
       const bestScore = Math.min(...eligible.map(score));
-      eligible = eligible.filter(item => score(item) <= bestScore + 0.1);
+      eligible = eligible.filter(item => score(item) <= bestScore + 0.05);
     }
   } else {
-    const score = item =>
-      10 * Math.abs(item.bestValue) +
-      0.1 * item.spread +
-      0.1 * Math.abs(item.averageValue);
+    // 해당 잔액에서 2%p 이내 조합이 없으면, 기대값 편향을 최소화한 조합을 사용합니다.
     const bestScore = Math.min(...available.map(score));
-    eligible = available.filter(item => score(item) <= bestScore + 0.1);
+    eligible = available.filter(item => score(item) <= bestScore + 0.05);
   }
 
   // 특정 가치 구간에 선택지가 몰려도, 조합 수가 많은 선택지만 과도하게 자주 나오지 않도록 보정합니다.
