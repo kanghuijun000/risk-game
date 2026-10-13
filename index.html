@@ -9,7 +9,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css?v=25">
+  <link rel="stylesheet" href="./style.css?v=26">
 </head>
 <body>
 <div class="app">
@@ -635,12 +635,24 @@
   </div>
 </div>
 
+<div id="friendGiftModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="giftModalTitle">
+  <div class="modal-card friend-gift-modal-card">
+    <button id="closeFriendGiftModal" class="modal-close" type="button" aria-label="선물하기 창 닫기">✕</button>
+    <p class="eyebrow">SEND GIFT</p><h2 id="giftModalTitle">친구에게 선물</h2>
+    <p id="giftModalDescription" class="muted">선물할 금액을 입력하세요.</p>
+    <label for="giftAmountInput">선물 금액 (원)</label>
+    <input id="giftAmountInput" type="number" min="1" max="9000000000000" step="1" inputmode="numeric" placeholder="금액 입력">
+    <p id="giftModalError" class="error-message" role="status"></p>
+    <button id="giftConfirmButton" class="wide-button primary" type="button">확인</button>
+  </div>
+</div>
+
 <div id="friendRequestsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="friendRequestsModalTitle">
   <div class="modal-card friend-request-modal-card">
     <button id="closeFriendRequestsModal" class="modal-close" type="button" aria-label="알림 닫기">✕</button>
     <p class="eyebrow">NOTIFICATIONS</p>
-    <h2 id="friendRequestsModalTitle">친구 요청</h2>
-    <p class="muted">받은 친구 요청을 수락하거나 거절할 수 있습니다.</p>
+    <h2 id="friendRequestsModalTitle">알림</h2>
+    <p class="muted">친구 요청과 받은 선물을 확인할 수 있습니다.</p>
     <div id="friendRequests" class="friend-list friend-requests-list">
       <p class="muted friend-empty">온라인 연결 후 받은 친구 요청을 확인할 수 있습니다.</p>
     </div>
@@ -706,10 +718,10 @@
     <p>앱을 완전히 종료한 뒤 다시 실행해 주세요.</p>
   </div>
 </div>
-<script src="./script.js?v=45" defer></script>
+<script src="./script.js?v=46" defer></script>
 <script src="./supabase-config.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="./friends.js?v=23" defer></script>
+<script src="./friends.js?v=24" defer></script>
 <script src="./recovery.js?v=11" defer></script>
 </body>
 </html>
