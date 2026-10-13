@@ -299,39 +299,53 @@
     list.replaceChildren(frag);renderedRequestsSignature=sig;
   }
 
+  let presenceSyncPromise = null;
+
   async function syncMyPresence(force = false) {
-    if (!client || !currentUser || document.visibilityState !== "visible") return;
+    if (!client || !currentUser || document.visibilityState !== "visible") return false;
     const now = Date.now();
-    if (presenceSyncInProgress) {
-      // 예산이 바뀌는 동안 이전 동기화가 진행 중이면 최신 예산을 한 번 더 전송합니다.
-      if (force) presenceSyncPending = true;
-      return;
+
+    // 선물 전송 직전에는 최신 예산이 서버에 반영될 때까지 기다립니다.
+    // 이전 버전은 이미 진행 중인 동기화가 있으면 즉시 반환해,
+    // 선물 RPC가 오래된 서버 예산을 읽는 경쟁 상태가 발생할 수 있었습니다.
+    if (presenceSyncPromise) {
+      if (!force && now - lastPresenceSyncAt < 9000) {
+        return await presenceSyncPromise;
+      }
+      await presenceSyncPromise;
+      return force ? syncMyPresence(true) : false;
     }
-    if (!force && now - lastPresenceSyncAt < 9000) return;
-    presenceSyncInProgress = true;
+    if (!force && now - lastPresenceSyncAt < 9000) return true;
+
     lastPresenceSyncAt = now;
+    const run = (async () => {
+      try {
+        const budget = typeof window.riskGameGetBudget === "function"
+          ? window.riskGameGetBudget()
+          : 0;
+        const safeBudget = Number.isFinite(Number(budget))
+          ? Math.max(0, Math.floor(Number(budget)))
+          : 0;
+        const { error } = await client.rpc("sync_risk_game_presence", {
+          p_budget: safeBudget
+        });
+        if (error) throw error;
+        return true;
+      } catch (error) {
+        console.error("온라인 상태/예산 동기화 실패:", error);
+        return false;
+      }
+    })();
+
+    presenceSyncPromise = run;
+    presenceSyncInProgress = true;
     try {
-      const budget = typeof window.riskGameGetBudget === "function"
-        ? window.riskGameGetBudget()
-        : 0;
-      const safeBudget = Number.isFinite(Number(budget))
-        ? Math.max(0, Math.floor(Number(budget)))
-        : 0;
-      const { error } = await client.rpc("sync_risk_game_presence", {
-        p_budget: safeBudget
-      });
-      if (error) throw error;
-    } catch (error) {
-      console.error("온라인 상태/예산 동기화 실패:", error);
+      return await run;
     } finally {
       presenceSyncInProgress = false;
-      if (presenceSyncPending) {
-        presenceSyncPending = false;
-        window.setTimeout(() => syncMyPresence(true), 0);
-      }
+      if (presenceSyncPromise === run) presenceSyncPromise = null;
     }
   }
-
   async function loadFriends() {
     const list = $("friendList");
     if (!list) return;
@@ -400,7 +414,7 @@
     if(!raw||!Number.isSafeInteger(amount)||amount<=0||amount>9000000000000){$("giftModalError").textContent="1원부터 9조 원까지의 정수 금액을 입력하세요.";return;}
     if(amount>budget){$("giftModalError").textContent="보유 예산보다 많이 선물할 수 없습니다.";return;}
     setBusy(true);$("giftConfirmButton").disabled=true;$("giftModalError").textContent="";
-    try{await syncMyPresence(true);const {error}=await client.rpc("send_risk_game_gift",{p_receiver_id:selectedGiftFriend.id,p_amount:amount});if(error)throw error;
+    try{if(!(await syncMyPresence(true)))throw new Error("예산 동기화에 실패했습니다. 인터넷 연결을 확인하고 다시 시도하세요.");const {error}=await client.rpc("send_risk_game_gift",{p_receiver_id:selectedGiftFriend.id,p_amount:amount});if(error)throw error;
       if(typeof window.riskGameChangeBudget!=="function"||!window.riskGameChangeBudget(-amount))throw new Error("선물은 전송됐지만 이 기기의 예산을 갱신하지 못했습니다. 새로고침해 확인하세요.");
       closeGiftModal();await loadFriends();
     }catch(error){console.error("선물 전송 실패:",error);$("giftModalError").textContent=String(error?.message||"선물 전송에 실패했습니다.");}
