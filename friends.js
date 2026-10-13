@@ -270,7 +270,7 @@
   function makeGiftNotificationRow(gift) {
     const row=document.createElement("div");row.className="friend-row friend-gift-notification-row";
     const details=document.createElement("div");details.className="friend-row-details";
-    const title=document.createElement("strong");title.textContent=gift.sender_name+" 님이 선물을 보냈습니다.";
+    const title=document.createElement("strong");title.textContent=gift.sender_name+"#"+(gift.sender_code||"----")+" 님이 선물을 보냈습니다.";
     const amount=document.createElement("span");amount.className="friend-gift-amount";amount.textContent=formatFriendMoney(gift.amount);
     const note=document.createElement("span");note.textContent=gift.status==="accepted"?"받은 선물":"받기 버튼을 누르면 보유 예산에 추가됩니다.";
     details.append(title,amount,note);
@@ -285,7 +285,7 @@
     if(!client||!currentUser){latestRequestIds=[];const sig="offline";if(renderedRequestsSignature!==sig){const e=document.createElement("p");e.className="muted friend-empty";e.textContent="온라인 연결 후 알림을 확인할 수 있습니다.";list.replaceChildren(e);renderedRequestsSignature=sig;}return;}
     const {data:requests,error}=await client.from("friend_requests").select("id,sender_id,sender_name,sender_code,created_at").eq("receiver_id",currentUser.id).eq("status","pending").order("created_at",{ascending:true});
     if(error)throw error;
-    let gifts=[];const gr=await client.from("friend_gifts").select("id,sender_id,receiver_id,sender_name,amount,status,created_at").eq("receiver_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
+    let gifts=[];const gr=await client.from("friend_gifts").select("id,sender_id,receiver_id,sender_name,sender_code,amount,status,created_at").eq("receiver_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
     if(gr.error)console.warn("선물 알림 SQL 설정을 확인하세요.",gr.error);else gifts=gr.data||[];
     const rr=(requests||[]).map(x=>({...x,kind:"request",notificationKey:"request:"+x.id}));
     const gg=gifts.map(x=>({...x,kind:"gift",notificationKey:"gift:"+x.id}));
