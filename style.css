@@ -1169,6 +1169,21 @@ input::-webkit-inner-spin-button, input::-webkit-outer-spin-button {
 }
 
 
+/* 알림 삭제 */
+.notification-clear-button {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  margin: 0 0 12px;
+}
+.notification-swipe-dismissible {
+  touch-action: pan-y;
+  user-select: none;
+}
+.notification-swipe-dismissible:active {
+  opacity: .92;
+}
+
 /* 받은 친구 요청 */
 .friend-requests-section { margin-top: 20px; }
 .friend-request-row { align-items: center; }
