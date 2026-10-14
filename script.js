@@ -412,7 +412,8 @@ function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
   const multiplier = logRatio >= 0
     ? Math.min(1.75, 1 + 0.20 * logRatio)
     : Math.max(0.80, 1 + 0.10 * logRatio);
-  return Math.max(0, Math.min(95, baseChance * multiplier));
+  // 99% 전액 손실 선택지도 기본 확률을 그대로 유지합니다. 95%로 제한하면 ×100배 선택지의 기대값이 비정상적으로 커집니다.
+  return Math.max(0, Math.min(99.5, baseChance * multiplier));
 }
 
 function getChoicePenaltyText(choice, currentMoney, startAmount = null) {
