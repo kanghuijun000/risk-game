@@ -33,6 +33,84 @@
     return currentUser ? "risk-game-seen-friend-requests:" + currentUser.id : "";
   }
 
+  function notificationDismissalStorageKey() {
+    return currentUser ? "risk-game-dismissed-notifications:" + currentUser.id : "";
+  }
+
+  function getDismissedNotificationIds() {
+    const key = notificationDismissalStorageKey();
+    if (!key) return new Set();
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "[]");
+      return new Set(Array.isArray(saved) ? saved.map(String) : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveDismissedNotificationIds(ids) {
+    const key = notificationDismissalStorageKey();
+    if (!key) return false;
+    try {
+      localStorage.setItem(key, JSON.stringify(Array.from(ids)));
+      return true;
+    } catch (error) {
+      console.error("알림 삭제 상태 저장 실패:", error);
+      setMessage("알림 삭제 상태를 저장하지 못했습니다. 기기 저장 공간을 확인하세요.", true);
+      return false;
+    }
+  }
+
+  function canDismissNotification(item) {
+    // 친구 요청은 미처리 상태만 목록에 나타나며, 미수령 선물도 삭제할 수 없습니다.
+    return item?.kind === "gift" && item.status === "accepted";
+  }
+
+  let latestNotificationRows = [];
+
+  function dismissNotification(item) {
+    if (!canDismissNotification(item)) return;
+    const dismissed = getDismissedNotificationIds();
+    dismissed.add(String(item.notificationKey));
+    if (!saveDismissedNotificationIds(dismissed)) return;
+    setMessage("");
+    loadRequests().catch(error => console.error("알림 삭제 후 목록 갱신 실패:", error));
+  }
+
+  function dismissAllNotifications() {
+    const eligible = latestNotificationRows.filter(canDismissNotification);
+    if (!eligible.length) {
+      setMessage("삭제할 수 있는 알림이 없습니다. 처리하지 않은 친구 요청과 받지 않은 선물은 삭제되지 않습니다.");
+      return;
+    }
+    const dismissed = getDismissedNotificationIds();
+    eligible.forEach(item => dismissed.add(String(item.notificationKey)));
+    if (!saveDismissedNotificationIds(dismissed)) return;
+    setMessage("");
+    loadRequests().catch(error => console.error("전체 알림 삭제 후 목록 갱신 실패:", error));
+  }
+
+  function attachDismissSwipe(row, item) {
+    if (!canDismissNotification(item)) return;
+    let startX = 0;
+    let startY = 0;
+    row.classList.add("notification-swipe-dismissible");
+    row.setAttribute("aria-label", "왼쪽으로 밀어 받은 알림 삭제");
+    row.addEventListener("touchstart", event => {
+      const touch = event.changedTouches && event.changedTouches[0];
+      if (!touch) return;
+      startX = touch.clientX;
+      startY = touch.clientY;
+    }, { passive: true });
+    row.addEventListener("touchend", event => {
+      const touch = event.changedTouches && event.changedTouches[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = touch.clientY - startY;
+      if (dx < -70 && Math.abs(dx) > Math.abs(dy) * 1.3) dismissNotification(item);
+    }, { passive: true });
+  }
+
   function getSeenFriendRequestIds() {
     const key = friendRequestSeenStorageKey();
     if (!key) return new Set();
@@ -278,7 +356,7 @@
     claim.textContent=gift.status==="accepted"?"✓":"받기";claim.disabled=busy||gift.status==="accepted";
     claim.setAttribute("aria-label",gift.status==="accepted"?"이미 받은 선물":gift.sender_name+" 님의 선물 받기");
     if(gift.status!=="accepted")claim.addEventListener("click",()=>acceptGift(gift));
-    row.append(details,claim);return row;
+    row.append(details,claim);attachDismissSwipe(row,gift);return row;
   }
   async function loadRequests() {
     const list=$("friendRequests");if(!list)return;
@@ -338,12 +416,15 @@
     const rr=(requests||[]).map(x=>({...x,kind:"request",notificationKey:"request:"+x.id}));
     const gg=gifts.map(x=>({...x,kind:"gift",notificationKey:"gift:"+x.id}));
     const rows=[...rr,...gg].sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
+    latestNotificationRows=rows;
+    const dismissed=getDismissedNotificationIds();
+    const visibleRows=rows.filter(x=>!canDismissNotification(x)||!dismissed.has(String(x.notificationKey)));
     const pending=[...rr.map(x=>x.notificationKey),...gg.filter(x=>x.status==="pending").map(x=>x.notificationKey)];
     refreshFriendRequestDot(pending.map(id=>({id})));
-    const sig=currentUser.id+":"+JSON.stringify(rows.map(x=>[x.kind,x.id,x.sender_id,x.sender_name,x.sender_code||"",x.amount||0,x.status||"",x.created_at]));
+    const sig=currentUser.id+":"+JSON.stringify(visibleRows.map(x=>[x.kind,x.id,x.sender_id,x.sender_name,x.sender_code||"",x.amount||0,x.status||"",x.created_at]));
     if(sig===renderedRequestsSignature)return;
     const frag=document.createDocumentFragment();
-    if(!rows.length){const e=document.createElement("p");e.className="muted friend-empty";e.textContent="새로운 알림이 없습니다.";frag.append(e);}else rows.forEach(x=>frag.append(makeRequestRow(x)));
+    if(!visibleRows.length){const e=document.createElement("p");e.className="muted friend-empty";e.textContent="새로운 알림이 없습니다.";frag.append(e);}else visibleRows.forEach(x=>frag.append(makeRequestRow(x)));
     list.replaceChildren(frag);renderedRequestsSignature=sig;
   }
 
@@ -780,6 +861,7 @@
       const seen = getSeenFriendRequestIds();
       updateFriendRequestDot(latestRequestIds.some(id => !seen.has(id)));
     };
+    $("clearNotificationsButton")?.addEventListener("click", dismissAllNotifications);
     $("closeFriendRequestsModal").addEventListener("click", closeAndRefreshRequestDot);
     requestsModal?.addEventListener("click", event => {
       if (event.target === requestsModal) closeAndRefreshRequestDot();
