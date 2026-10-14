@@ -1483,7 +1483,7 @@ function renderGame() {
 
   $("gameRerollDisplay").textContent =
     `${state.rerolls} / ${state.rerollCap}`;
-  $("gameMoneyDisplay").textContent = moneyText(game.money);
+  $("gameMoneyDisplay").textContent = `${moneyText(game.money)} / ${moneyText(game.startAmount)}`;
   $("turnDisplay").textContent = String(game.turn);
 
   $("forcedHint").classList.toggle("hidden", !game.forcedColor);
