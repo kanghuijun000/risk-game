@@ -402,6 +402,8 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
 
 function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
   const baseChance = Math.max(0, Math.min(100, Number(choice.penaltyChance) || 0));
+  // 초고위험 ×100배 선택지는 표시된 99% 전액 손실 확률을 잔액에 따라 낮추지 않습니다.
+  if (baseChance === 99) return 99;
   const money = Number(currentMoney);
   const baseline = Number(startAmount);
   if (!Number.isFinite(money) || money <= 0 || !Number.isFinite(baseline) || baseline <= 0) return baseChance;
@@ -649,9 +651,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
         ),
         1
       ) *
-      (safeBoost && item.choices.some(choice => choice.id === "safeNoPenalty")
-        ? 1.5
-        : 1)
+      // '안전한 양수 선택지 확률 증가' 보너스는 실제 양수 효과가 있는 안전 선택지의 출현 가중치에 적용합니다.
+      (safeBoost && item.choices.some(choice =>
+        SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id) &&
+        choice.effect > 0
+      ) ? 1.5 : 1)
   }));
   const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
   let roll = Math.random() * totalWeight;
