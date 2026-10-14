@@ -316,7 +316,7 @@
       gifts=(giftResult.data||[]).map(gift=>({...gift,sender_code:gift.sender_code||""}));
       // sender_code 열이 없거나 예전 선물 행에 코드가 비어 있어도,
       // 보낸 사람의 프로필에서 영구 친구 코드를 가져와 표시합니다.
-      const missingCodeIds=[...new Set(gifts.filter(gift=>!/^\\d{4}$/.test(String(gift.sender_code||""))).map(gift=>gift.sender_id).filter(Boolean))];
+      const missingCodeIds=[...new Set(gifts.filter(gift=>!/^\d{4}$/.test(String(gift.sender_code||""))).map(gift=>gift.sender_id).filter(Boolean))];
       if(missingCodeIds.length){
         const codeResult=await client.from("profiles").select("id,friend_code").in("id",missingCodeIds);
         if(codeResult.error){
@@ -325,7 +325,7 @@
           const codeById=new Map((codeResult.data||[]).map(profile=>[profile.id,String(profile.friend_code||"")]));
           gifts=gifts.map(gift=>({
             ...gift,
-            sender_code:/^\\d{4}$/.test(String(gift.sender_code||""))?String(gift.sender_code):(/^[0-9]{4}$/.test(codeById.get(gift.sender_id)||"")?codeById.get(gift.sender_id):"")
+            sender_code:/^\d{4}$/.test(String(gift.sender_code||""))?String(gift.sender_code):(/^[0-9]{4}$/.test(codeById.get(gift.sender_id)||"")?codeById.get(gift.sender_id):"")
           }));
         }
       }
