@@ -283,10 +283,43 @@
   async function loadRequests() {
     const list=$("friendRequests");if(!list)return;
     if(!client||!currentUser){latestRequestIds=[];const sig="offline";if(renderedRequestsSignature!==sig){const e=document.createElement("p");e.className="muted friend-empty";e.textContent="온라인 연결 후 알림을 확인할 수 있습니다.";list.replaceChildren(e);renderedRequestsSignature=sig;}return;}
-    const {data:requests,error}=await client.from("friend_requests").select("id,sender_id,sender_name,sender_code,created_at").eq("receiver_id",currentUser.id).eq("status","pending").order("created_at",{ascending:true});
-    if(error)throw error;
-    let gifts=[];const gr=await client.from("friend_gifts").select("id,sender_id,receiver_id,sender_name,sender_code,amount,status,created_at").eq("receiver_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
-    if(gr.error)console.warn("선물 알림 SQL 설정을 확인하세요.",gr.error);else gifts=gr.data||[];
+    // 친구 요청과 선물은 서로 독립적으로 불러옵니다. 친구 요청 조회 오류 때문에
+    // 선물 알림까지 통째로 사라지는 일을 막고, 선물 조회 오류는 화면에 알립니다.
+    let requests=[];
+    let requestLoadError=null;
+    const requestResult=await client.from("friend_requests")
+      .select("id,sender_id,sender_name,sender_code,created_at")
+      .eq("receiver_id",currentUser.id).eq("status","pending")
+      .order("created_at",{ascending:true});
+    if(requestResult.error){
+      requestLoadError=requestResult.error;
+      console.error("친구 요청 불러오기 실패:",requestResult.error);
+    }else{
+      requests=requestResult.data||[];
+    }
+
+    let gifts=[];
+    let giftLoadError=null;
+    let giftResult=await client.from("friend_gifts")
+      .select("id,sender_id,receiver_id,sender_name,sender_code,amount,status,created_at")
+      .eq("receiver_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
+    if(giftResult.error && /sender_code|column/i.test(String(giftResult.error.message||""))){
+      // sender_code 열이 아직 없는 구버전 DB에서도 선물 자체는 표시합니다.
+      giftResult=await client.from("friend_gifts")
+        .select("id,sender_id,receiver_id,sender_name,amount,status,created_at")
+        .eq("receiver_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
+    }
+    if(giftResult.error){
+      giftLoadError=giftResult.error;
+      console.error("선물 알림 불러오기 실패:",giftResult.error);
+    }else{
+      gifts=(giftResult.data||[]).map(gift=>({...gift,sender_code:gift.sender_code||""}));
+    }
+    if(giftLoadError){
+      setMessage("선물 알림을 불러오지 못했습니다. 선물은 다시 보내지 말고 친구 기능 연결 상태를 확인하세요. ("+String(giftLoadError.message||"조회 오류").slice(0,140)+")",true);
+    }else if(requestLoadError){
+      setMessage("친구 요청을 불러오지 못했지만 선물 알림은 별도로 확인하고 있습니다. ("+String(requestLoadError.message||"조회 오류").slice(0,100)+")",true);
+    }
     const rr=(requests||[]).map(x=>({...x,kind:"request",notificationKey:"request:"+x.id}));
     const gg=gifts.map(x=>({...x,kind:"gift",notificationKey:"gift:"+x.id}));
     const rows=[...rr,...gg].sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
