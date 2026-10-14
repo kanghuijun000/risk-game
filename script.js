@@ -406,12 +406,14 @@ function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
   const baseline = Number(startAmount);
   if (!Number.isFinite(money) || money <= 0 || !Number.isFinite(baseline) || baseline <= 0) return baseChance;
 
-  // 시작 판돈보다 잔액이 커지면 손실 확률을 점진적으로 높이고,
-  // 잔액이 크게 줄면 회복 여지를 위해 조금 낮춥니다. 극단적인 변화를 제한합니다.
+  // 시뮬레이션 비교에서 선택한 절충값:
+  // 잔액이 늘면 손실 확률을 더 빠르게 높여 이익의 과도한 누적을 억제하고,
+  // 잔액이 줄면 손실 확률을 조금 더 낮춰 지나치게 빠른 파산을 완화합니다.
+  // 상·하한은 유지해 확률 변화가 극단적으로 커지지 않게 합니다.
   const logRatio = Math.log2(Math.max(0.0001, money / baseline));
   const multiplier = logRatio >= 0
-    ? Math.min(1.75, 1 + 0.20 * logRatio)
-    : Math.max(0.80, 1 + 0.10 * logRatio);
+    ? Math.min(1.75, 1 + 0.30 * logRatio)
+    : Math.max(0.80, 1 + 0.15 * logRatio);
   // 99% 전액 손실 선택지도 기본 확률을 그대로 유지합니다. 95%로 제한하면 ×100배 선택지의 기대값이 비정상적으로 커집니다.
   return Math.max(0, Math.min(99.5, baseChance * multiplier));
 }
