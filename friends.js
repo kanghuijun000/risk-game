@@ -561,27 +561,48 @@
 
   async function refreshFriendLists() {
     const button = $("refreshFriendsButton");
+    const status = $("friendCloudStatus");
     if (busy) return;
     setBusy(true);
     setMessage("");
+    if (status) status.textContent = "온라인 계정을 다시 확인하고 있습니다...";
     if (button) {
       button.textContent = "↻";
       button.setAttribute("aria-label", "친구 목록 새로고침 중");
       button.title = "새로고침 중...";
     }
     try {
-      if (!client || !currentUser) {
+      if (!client) throw new Error("Supabase 클라이언트를 만들지 못했습니다. 설정과 라이브러리 로딩을 확인하세요.");
+
+      // 메모리에 남아 있는 사용자 객체만 믿지 않고 실제 저장된 세션을 다시 확인합니다.
+      const sessionResult = await withTimeout(client.auth.getSession(), "온라인 계정 확인");
+      if (sessionResult.error) throw sessionResult.error;
+      const sessionUser = sessionResult.data?.session?.user || null;
+      if (!sessionUser) {
+        currentUser = null;
+        updateAccountUi();
         const connected = await reconnectOnline();
         if (!connected || !currentUser) {
-          throw new Error("온라인 연결에 실패했습니다. 잠시 후 다시 시도하세요.");
+          throw new Error(connectionErrorMessage || "저장된 온라인 계정 세션이 없습니다. 기존 계정 복구가 필요할 수 있습니다.");
         }
+      } else {
+        currentUser = sessionUser;
       }
-      await syncMyPresence(true);
+
+      // 프로필 조회 오류를 숨기지 않고 실제 실패 지점에서 중단합니다.
+      await withTimeout(refreshCloudData(), "친구 계정 정보 동기화");
+      const presenceOk = await syncMyPresence(true);
+      if (!presenceOk) throw new Error("온라인 접속 상태 동기화에 실패했습니다. 네트워크 또는 Supabase RPC 권한을 확인하세요.");
       await Promise.all([loadFriends(), loadRequests()]);
+      connectionErrorMessage = "";
+      if (status) status.textContent = "온라인 연결됨 · 이름과 고유 코드는 유지됩니다.";
       setMessage("");
     } catch (error) {
       console.error("친구 목록 수동 새로고침 실패:", error);
-      setMessage("새로고침에 실패했습니다: " + String(error?.message || "알 수 없는 오류"), true);
+      const detail = String(error?.message || "알 수 없는 오류");
+      connectionErrorMessage = detail;
+      if (status) status.textContent = "온라인 연결 실패 · " + detail.slice(0, 180);
+      setMessage("새로고침 실패: " + detail, true);
     } finally {
       if (button) {
         button.textContent = "↻";
