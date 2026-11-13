@@ -16,6 +16,7 @@ const MAX_MONEY = Number.MAX_VALUE;
 const BANK_MINUTE_MS = 60000;
 const INITIAL_BANK_RATE = 1;
 const WAGE_AMOUNT = 10000;
+const REROLL_PURCHASE_COST = 5000;
 const WAGE_COOLDOWN_MS = 3600000;
 
 const $ = id => document.getElementById(id);
@@ -1917,7 +1918,7 @@ $("confirmModal").addEventListener("click", event => {
 
 function limitUpgrade() {
   let increment = 5000;
-  let cost = 25000;
+  let cost = 20000;
 
   while (
     state.gameLimit >= increment * 10 &&
@@ -1968,8 +1969,8 @@ function updateShop() {
     limitMaxed ? "최대" : "구매";
 
   $("shopRerollDisplay").textContent = `${state.rerolls} / ${state.rerollCap}`;
-  $("buyRerollButton").classList.toggle("unavailable", rerollMaxed || state.budget < 10000);
-  $("buyRerollButton").setAttribute("aria-disabled", String(rerollMaxed || state.budget < 10000));
+  $("buyRerollButton").classList.toggle("unavailable", rerollMaxed || state.budget < REROLL_PURCHASE_COST);
+  $("buyRerollButton").setAttribute("aria-disabled", String(rerollMaxed || state.budget < REROLL_PURCHASE_COST));
   $("buyRerollButton").querySelector("small").textContent =
     rerollMaxed ? "최대" : "구매";
 
@@ -2077,12 +2078,12 @@ $("buyLimitButton").addEventListener("click", () => {
 
 $("buyRerollButton").addEventListener("click", () => {
   if (state.rerolls >= state.rerollCap) return showPurchaseNotice("최대치 도달");
-  if (state.budget < 10000) return showPurchaseNotice("예산 부족");
+  if (state.budget < REROLL_PURCHASE_COST) return showPurchaseNotice("예산 부족");
 
-  askConfirm("리롤 1회를 10,000원에 구매하시겠습니까?", () => {
+  askConfirm(`리롤 1회를 ${moneyText(REROLL_PURCHASE_COST)}에 구매하시겠습니까?`, () => {
     if (state.rerolls >= state.rerollCap) return showPurchaseNotice("최대치 도달");
-    if (state.budget < 10000) return showPurchaseNotice("예산 부족");
-    state.budget -= 10000;
+    if (state.budget < REROLL_PURCHASE_COST) return showPurchaseNotice("예산 부족");
+    state.budget -= REROLL_PURCHASE_COST;
     state.rerolls += 1;
     shopMessage("");
     saveState();
