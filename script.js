@@ -354,6 +354,32 @@ function samePair(a, b) {
   return aIds === bIds;
 }
 
+// 고정 금액 선택지는 시작 판돈을 기준으로 완만하게 규모를 조정합니다.
+// 10,000원 판돈을 기준으로 하되, 작은 판돈에서 보상이 과도해지거나
+// 큰 판돈에서 보상이 지나치게 커지는 것을 막기 위해 제곱근보다 완만한 곡선과 상·하한을 둡니다.
+const CASH_REWARD_REFERENCE_STAKE = 10000;
+const CASH_REWARD_SCALE_POWER = 0.75;
+const CASH_REWARD_MIN_SCALE = 0.25;
+const CASH_REWARD_MAX_SCALE = 2.5;
+
+function getCashRewardScale(startAmount) {
+  const stake = Number(startAmount);
+  if (!Number.isFinite(stake) || stake <= 0) return 1;
+  const rawScale = Math.pow(stake / CASH_REWARD_REFERENCE_STAKE, CASH_REWARD_SCALE_POWER);
+  return Math.max(CASH_REWARD_MIN_SCALE, Math.min(CASH_REWARD_MAX_SCALE, rawScale));
+}
+
+function scaleCashChoice(choice, startAmount) {
+  if (!choice || choice.amountEffect == null) return choice ? { ...choice } : choice;
+  const scale = getCashRewardScale(startAmount);
+  const amount = Math.max(100, Math.round((Number(choice.amountEffect) * scale) / 100) * 100);
+  return {
+    ...choice,
+    amountEffect: amount,
+    title: `+${moneyFormat.format(amount)}원`
+  };
+}
+
 function getCashRisk(choice, currentMoney, startAmount = null) {
   const money = Math.max(0, Number(currentMoney) || 0);
   const baseline = Number.isFinite(Number(startAmount)) && Number(startAmount) > 0
@@ -516,7 +542,8 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
 function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null) {
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
-    .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen");
+    .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen")
+    .map(choice => scaleCashChoice(choice, startAmount));
 
   // 무패널티 선택지의 추가 가중치는 조합 선택 단계에서 반영합니다.
 
@@ -778,7 +805,10 @@ function normalizeState(raw) {
   if (raw.activeGame && typeof raw.activeGame === "object") {
     const game = raw.activeGame;
     const choices = Array.isArray(game.choices)
-      ? game.choices.map(normalizeChoice)
+      ? game.choices.map(rawChoice => {
+          const choice = normalizeChoice(rawChoice);
+          return choice ? scaleCashChoice(choice, game.startAmount) : null;
+        })
       : [];
 
     const expectedChoiceCount = game.threeChoiceMode
