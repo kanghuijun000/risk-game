@@ -532,9 +532,9 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
   }
   let multiplier = baseMultiplier * penaltyMultiplier;
   if (choice.bonusType === "reduceLoss") {
-    multiplier += Math.min(10, choice.bonusTurns || 5) * 0.004;
-  } else if (choice.bonusType === "safePositive") {
-    multiplier += Math.min(10, choice.bonusTurns || 10) * 0.004;
+    // 손실 확률 감소는 실제 다음 턴들에서 별도로 적용되므로
+    // 현재 턴의 기대값에 고정 수익처럼 더하지 않습니다.
+    // 안전한 양수 선택지 증가(safePositive)는 출현 가중치에만 반영됩니다.
   }
   return (multiplier - 1) * 100;
 }
