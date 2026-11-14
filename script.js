@@ -447,15 +447,16 @@ function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
   return Math.max(0, Math.min(99.5, baseChance * multiplier));
 }
 
-function getChoicePenaltyText(choice, currentMoney, startAmount = null) {
+function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
     if (!Number(choice.penaltyChance) || !Number.isFinite(Number(startAmount))) {
       return description;
     }
-    const adjusted = Math.round(
-      getAdaptivePenaltyChance(choice, currentMoney, startAmount) * 10
-    ) / 10;
+    const isLossPenalty = ["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType);
+    const chance = getAdaptivePenaltyChance(choice, currentMoney, startAmount) *
+      (isLossPenalty && reduceLossTurns > 0 ? 0.7 : 1);
+    const adjusted = Math.round(chance * 10) / 10;
     const chanceText = Number.isInteger(adjusted) ? String(adjusted) : adjusted.toFixed(1);
     return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
   }
@@ -489,7 +490,7 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
   return true;
 }
 
-function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
+function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
 
@@ -509,7 +510,9 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
   const baseMultiplier = choice.effect < 0
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
-  const chance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount) / 100;
+  const baseChance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount);
+  const isLossPenalty = ["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType);
+  const chance = (baseChance * (isLossPenalty && reduceLossTurns > 0 ? 0.7 : 1)) / 100;
   const moneyAfterEffect = hasMoney ? Math.round(money * baseMultiplier) : null;
   let penaltyMultiplier = 1;
   switch (choice.penaltyType) {
@@ -528,7 +531,9 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
     case "forceBlue":
     case "forceRed":
     case "forceGreen":
-      penaltyMultiplier = 1 - chance * 0.06;
+      // 강제 색상은 잔액의 6%를 잃는 패널티가 아닙니다.
+      // 다음 조합에서 최선의 선택을 못 하는 기회비용만 보수적으로 반영합니다.
+      penaltyMultiplier = 1 - chance * 0.0015;
       break;
   }
   let multiplier = baseMultiplier * penaltyMultiplier;
@@ -540,7 +545,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
   return (multiplier - 1) * 100;
 }
 
-function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null) {
+function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen")
@@ -570,7 +575,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   });
   const valueById = new Map(candidates.map(choice => [
     choice.id,
-    estimateChoiceValue(choice, currentMoney, startAmount)
+    estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns)
   ]));
 
   // 가능한 조합을 전부 평가해 선택지끼리의 기대값 격차가 과도한 조합을 피합니다.
@@ -1494,7 +1499,8 @@ $("confirmStartButton").addEventListener("click", () => {
       state.threeChoiceMode && state.threeChoiceUnlocked ? 3 : 2,
       false,
       amount,
-      amount
+      amount,
+      0
     ),
     forcedColor: null
   };
@@ -1564,7 +1570,7 @@ function renderGame() {
 
     item.color.textContent = item.colorName.toUpperCase();
     item.title.textContent = choice.title;
-    item.penalty.textContent = getChoicePenaltyText(choice, game.money, game.startAmount);
+    item.penalty.textContent = getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns);
 
     const blocked = Boolean(
       game.forcedColor && game.forcedColor !== item.colorName
@@ -1575,7 +1581,7 @@ function renderGame() {
 
     item.button.setAttribute(
       "aria-label",
-      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money, game.startAmount)}`
+      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns)}`
     );
   });
 
@@ -1751,7 +1757,8 @@ function chooseOption(index) {
     game.threeChoiceMode ? 3 : 2,
     game.safePositiveTurns > 0,
     game.money,
-    game.startAmount
+    game.startAmount,
+    game.reduceLossTurns
   );
 
   const bonusStatus = [
@@ -1788,7 +1795,8 @@ $("rerollButton").addEventListener("click", () => {
     game.threeChoiceMode ? 3 : 2,
     game.safePositiveTurns > 0,
     game.money,
-    game.startAmount
+    game.startAmount,
+    game.reduceLossTurns
   );
 
   // 금액과 강제 색상은 유지
