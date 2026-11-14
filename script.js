@@ -438,7 +438,8 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
   }
 
   const risk = getCashRisk(choice, currentMoney, startAmount);
-  const chance = (Math.round(risk.chance * 10) / 10).toFixed(1);
+  const adjustedChance = risk.chance * (reduceLossTurns > 0 ? 0.7 : 1);
+  const chance = (Math.round(adjustedChance * 10) / 10).toFixed(1);
   if (risk.penaltyType === "totalLoss") {
     return `패널티: ${chance}% 확률로 전액 손실`;
   }
@@ -476,8 +477,9 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
       Math.round(money + Number(choice.amountEffect || 0))
     );
     const risk = getCashRisk(choice, money, startAmount);
+    const effectiveChance = risk.chance * (reduceLossTurns > 0 ? 0.7 : 1);
     const expectedFinal = moneyAfterEffect * (
-      1 - (risk.chance / 100) * risk.lossFraction
+      1 - (effectiveChance / 100) * risk.lossFraction
     );
     return (expectedFinal / money - 1) * 100;
   }
@@ -1606,11 +1608,10 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
     beforeMoney == null ? game.money : beforeMoney,
     game.startAmount
   );
-  const effectiveChance = cashRisk
-    ? cashRisk.chance
-    : isLossPenalty && game.reduceLossTurns > 0
-      ? adaptiveChance * 0.7
-      : adaptiveChance;
+  const baseEffectiveChance = cashRisk ? cashRisk.chance : adaptiveChance;
+  const effectiveChance = isLossPenalty && game.reduceLossTurns > 0
+    ? baseEffectiveChance * 0.7
+    : baseEffectiveChance;
 
   if (Math.random() * 100 >= effectiveChance) {
     return choice.bonusType
@@ -1771,7 +1772,8 @@ $("rerollButton").addEventListener("click", () => {
     game.threeChoiceMode ? 3 : 2,
     game.safePositiveTurns > 0,
     game.money,
-    game.startAmount
+    game.startAmount,
+    game.reduceLossTurns
   );
 
   // 금액과 강제 색상은 유지
