@@ -788,7 +788,7 @@ function normalizeState(raw) {
     const choices = Array.isArray(game.choices)
       ? game.choices.map(rawChoice => {
           const choice = normalizeChoice(rawChoice);
-          return choice ? scaleCashChoice(choice, game.startAmount) : null;
+          return choice ? scaleCashChoice(choice, game.money || game.startAmount) : null;
         })
       : [];
 
