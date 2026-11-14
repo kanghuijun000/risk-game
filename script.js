@@ -605,14 +605,15 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     const hasNoPenaltyZero = item.choices.some(choice =>
       choice.id === "safeNoPenalty"
     );
-    // 평균 기대값을 중심으로 균형을 잡습니다. 최고 기대값만 0에 맞추면
-    // 0%·패널티 없음 조합이 과도하게 유리해지고 고정 금액 선택지가 밀려납니다.
-    return 10 * Math.abs(item.averageValue) +
-      0.1 * item.spread +
-      0.1 * Math.abs(item.bestValue) +
-      (hasNoPenaltyZero ? 1 : 0) -
-      (hasFixedAmount ? 0.75 : 0) -
-      (hasNegativeBonus ? 0.5 : 0);
+    // 플레이어가 더 유리한 선택지를 고르더라도 턴당 기대 손익이 거의 중립이 되도록
+    // '가장 높은 기대값'을 -0.05%에 맞춥니다. 평균값과 선택지 간 격차도 함께 제한합니다.
+    const targetBestValue = -0.05;
+    return 100 * Math.abs(item.bestValue - targetBestValue) +
+      20 * Math.abs(item.averageValue - targetBestValue) +
+      0.5 * item.spread +
+      (hasNoPenaltyZero ? 0.25 : 0) -
+      (hasFixedAmount ? 0.15 : 0) -
+      (hasNegativeBonus ? 0.1 : 0);
   };
 
   if (eligible.length) {
