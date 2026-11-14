@@ -788,8 +788,9 @@ function normalizeState(raw) {
     const game = raw.activeGame;
     const choices = Array.isArray(game.choices)
       ? game.choices.map(rawChoice => {
-          const choice = normalizeChoice(rawChoice);
-          return choice ? scaleCashChoice(choice, game.money || game.startAmount) : null;
+          // 저장된 선택지는 이미 게임 잔액 기준으로 보정된 값입니다.
+          // 불러올 때 다시 배율을 곱하면 재접속할 때마다 고정 보상이 중복 확대되므로 그대로 복원합니다.
+          return normalizeChoice(rawChoice);
         })
       : [];
 
