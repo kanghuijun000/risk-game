@@ -101,8 +101,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safe15",
-    effect: 3,
-    title: "+3%",
+    effect: 2.7,
+    title: "+2.7%",
     penalty: "패널티: 45% 확률로 다음 턴 빨강 강제",
     penaltyChance: 45,
     penaltyType: "forceRed"
@@ -125,8 +125,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeMinus10",
-    effect: 1,
-    title: "+1%",
+    effect: 0.9,
+    title: "+0.9%",
     penalty: "패널티: 15% 확률로 다음 턴 파랑 강제",
     penaltyChance: 15,
     penaltyType: "forceBlue"
@@ -149,8 +149,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeBonus5",
-    effect: -4,
-    title: "−4%",
+    effect: -3.6,
+    title: "−3.6%",
     penalty: "보너스: 다음 5턴 손실 패널티 확률 감소",
     penaltyChance: 0,
     penaltyType: "none",
@@ -159,8 +159,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeBonus10",
-    effect: -2,
-    title: "−2%",
+    effect: -0.5,
+    title: "−0.5%",
     penalty: "보너스: 다음 10턴 안전한 양수 선택지 확률 증가",
     penaltyChance: 0,
     penaltyType: "none",
@@ -174,70 +174,70 @@ const RISKY_CHOICES = [
     id: "risk40",
     effect: 5,
     title: "+5%",
-    penalty: "패널티: 20% 확률로 25% 손실",
-    penaltyChance: 20,
+    penalty: "패널티: 19.2% 확률로 25% 손실",
+    penaltyChance: 19.2,
     penaltyType: "loss25"
   },
   {
     id: "risk50",
     effect: 6,
     title: "+6%",
-    penalty: "패널티: 24% 확률로 25% 손실",
-    penaltyChance: 24,
+    penalty: "패널티: 22.8% 확률로 25% 손실",
+    penaltyChance: 22.8,
     penaltyType: "loss25"
   },
   {
     id: "risk75",
     effect: 8,
     title: "+8%",
-    penalty: "패널티: 30% 확률로 25% 손실",
-    penaltyChance: 30,
+    penalty: "패널티: 29.8% 확률로 25% 손실",
+    penaltyChance: 29.8,
     penaltyType: "loss25"
   },
   {
     id: "risk100",
     effect: 9,
     title: "+9%",
-    penalty: "패널티: 19% 확률로 50% 손실",
-    penaltyChance: 19,
+    penalty: "패널티: 16.6% 확률로 50% 손실",
+    penaltyChance: 16.6,
     penaltyType: "loss50"
   },
   {
     id: "risk200",
     effect: 14,
     title: "+14%",
-    penalty: "패널티: 27% 확률로 50% 손실",
-    penaltyChance: 27,
+    penalty: "패널티: 24.6% 확률로 50% 손실",
+    penaltyChance: 24.6,
     penaltyType: "loss50"
   },
   {
     id: "risk1000",
     effect: 5,
     title: "+5%",
-    penalty: "패널티: 6% 확률로 전액 손실",
-    penaltyChance: 6,
+    penalty: "패널티: 4.8% 확률로 전액 손실",
+    penaltyChance: 4.8,
     penaltyType: "totalLoss"
   },
   {
     id: "riskMinus25",
     effect: 7,
     title: "+7%",
-    penalty: "패널티: 28% 확률로 25% 손실",
-    penaltyChance: 28,
+    penalty: "패널티: 26.4% 확률로 25% 손실",
+    penaltyChance: 26.4,
     penaltyType: "loss25"
   },
   {
     id: "riskMinus50",
     effect: 12,
     title: "+12%",
-    penalty: "패널티: 22% 확률로 50% 손실",
-    penaltyChance: 22,
+    penalty: "패널티: 21.5% 확률로 50% 손실",
+    penaltyChance: 21.5,
     penaltyType: "loss50"
   },
   {
     id: "riskMinus15Bonus",
-    effect: -3,
-    title: "−3%",
+    effect: -3.6,
+    title: "−3.6%",
     penalty: "보너스: 다음 5턴 손실 패널티 확률 감소",
     penaltyChance: 0,
     penaltyType: "none",
@@ -278,7 +278,8 @@ const RISKY_CHOICES = [
     title: "+5,000원",
     penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
     penaltyChance: 0,
-    penaltyType: "cashRisk"
+    penaltyType: "cashRisk",
+    rarityWeight: 0.3
   },
   {
     id: "cash7500",
@@ -287,7 +288,8 @@ const RISKY_CHOICES = [
     title: "+7,500원",
     penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
     penaltyChance: 0,
-    penaltyType: "cashRisk"
+    penaltyType: "cashRisk",
+    rarityWeight: 0.15
   },
   {
     id: "cash10000",
@@ -296,7 +298,8 @@ const RISKY_CHOICES = [
     title: "+10,000원",
     penalty: "패널티: 잔액에 따라 손실 종류와 확률 조정",
     penaltyChance: 0,
-    penaltyType: "cashRisk"
+    penaltyType: "cashRisk",
+    rarityWeight: 0.08
   },
   {
     id: "rare25",
@@ -305,7 +308,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 20% 확률로 전액 손실",
     penaltyChance: 20,
     penaltyType: "totalLoss",
-    rarityWeight: 0.005
+    rarityWeight: 0.05
   },
   {
     id: "rare50",
@@ -314,7 +317,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 33.3% 확률로 전액 손실",
     penaltyChance: 33.3,
     penaltyType: "totalLoss",
-    rarityWeight: 0.005
+    rarityWeight: 0.05
   },
   {
     id: "rare100",
@@ -323,7 +326,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 50% 확률로 전액 손실",
     penaltyChance: 50,
     penaltyType: "totalLoss",
-    rarityWeight: 0.005
+    rarityWeight: 0.05
   },
   {
     id: "ultra100x",
@@ -332,7 +335,7 @@ const RISKY_CHOICES = [
     penalty: "초고위험: 99% 확률로 전액 손실",
     penaltyChance: 99,
     penaltyType: "totalLoss",
-    rarityWeight: 0.0005
+    rarityWeight: 0.01
   }
 ];
 
@@ -358,6 +361,9 @@ function samePair(a, b) {
 // 고정 금액 선택지는 현재 잔액에 비례시켜 판돈과 누적 턴에 관계없이
 // 같은 보상 비율을 유지합니다. 기준 잔액 10,000원에서 원래 금액을 그대로 적용합니다.
 const CASH_REWARD_REFERENCE_STAKE = 10000;
+const TARGET_CHOICE_EV_PERCENT = -0.05;
+const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
+const REDUCE_LOSS_REFERENCE_EXPOSURE = 0.0357;
 
 function getCashRewardScale(currentMoney) {
   const money = Number(currentMoney);
@@ -379,7 +385,7 @@ function scaleCashChoice(choice, currentMoney) {
 
 function getCashRisk(choice, currentMoney, startAmount = null) {
   const money = Math.max(0, Number(currentMoney) || 0);
-   const amount = Math.max(0, Number(choice.amountEffect) || 0);
+  const amount = Math.max(0, Number(choice.amountEffect) || 0);
   const after = clampMoney(Math.round(money + amount));
   const gain = Math.max(0, after - money);
 
@@ -387,8 +393,7 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
     return { penaltyType: "totalLoss", chance: 0, lossFraction: 1 };
   }
 
-  // 보상액을 '보상 적용 전 잔액'과 비교해야 작은 잔액에서 위험도가 제대로 반영됩니다.
-  // 예: 1,100원에서 1,000원을 받으면 손실 시 1,050원으로 거의 제자리인 50% 손실 대신 전액 손실 위험으로 분류합니다.
+  // 보상 대비 손실 규모를 잔액 비율로 판정하므로 판돈이 달라도 같은 위험 구조를 유지합니다.
   const gainRatio = gain / Math.max(1, money);
   let penaltyType;
   let lossFraction;
@@ -407,15 +412,15 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
     lossFraction = 1;
   }
 
-  // 기대 이익 허용치를 현재 잔액과 보상액에 각각 비례시켜 판돈별 비율을 동일하게 합니다.
-  const breakEvenChance = (gain / after / lossFraction) * 100;
-  const allowedExpectedGain = Math.min(money * 0.001, gain * 0.01);
-  const chanceReduction = (allowedExpectedGain / (after * lossFraction)) * 100;
-  const chance = Math.max(
-    0,
-    Math.min(100, breakEvenChance - chanceReduction)
-  );
-  return { penaltyType, chance, lossFraction };
+  // 고정 금액 보상도 현재 잔액에 비례시킨 뒤 목표 턴당 기대 손익(-0.05%)에 맞춰 확률을 역산합니다.
+  const targetFinal = money * (1 + TARGET_CHOICE_EV_PERCENT / 100);
+  const chance = ((1 - targetFinal / after) / lossFraction) * 100;
+
+  return {
+    penaltyType,
+    chance: Math.max(0, Math.min(100, chance)),
+    lossFraction
+  };
 }
 
 function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
@@ -431,14 +436,14 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
     }
     const baseChance = getAdaptivePenaltyChance(choice, currentMoney, startAmount);
     const adjusted = Math.round(
-      baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? 0.7 : 1) * 10
+      baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
     ) / 10;
     const chanceText = Number.isInteger(adjusted) ? String(adjusted) : adjusted.toFixed(1);
     return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
   }
 
   const risk = getCashRisk(choice, currentMoney, startAmount);
-  const adjustedChance = risk.chance * (reduceLossTurns > 0 ? 0.7 : 1);
+  const adjustedChance = risk.chance * (reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1);
   const chance = (Math.round(adjustedChance * 10) / 10).toFixed(1);
   if (risk.penaltyType === "totalLoss") {
     return `패널티: ${chance}% 확률로 전액 손실`;
@@ -477,7 +482,9 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
       Math.round(money + Number(choice.amountEffect || 0))
     );
     const risk = getCashRisk(choice, money, startAmount);
-    const effectiveChance = Math.round(risk.chance * (reduceLossTurns > 0 ? 0.7 : 1) * 10) / 10;
+    const effectiveChance = Math.round(
+      risk.chance * (reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
+    ) / 10;
     const expectedFinal = moneyAfterEffect * (
       1 - (effectiveChance / 100) * risk.lossFraction
     );
@@ -489,18 +496,32 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
   const baseChance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount);
-  const chance = Math.round(baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? 0.7 : 1) * 10) / 1000;
+  const chance = Math.round(
+    baseChance * (
+      ["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) &&
+      reduceLossTurns > 0
+        ? LOSS_CHANCE_REDUCTION_FACTOR
+        : 1
+    ) * 10
+  ) / 1000;
   const moneyAfterEffect = hasMoney ? Math.round(money * baseMultiplier) : null;
   let penaltyMultiplier = 1;
+
   switch (choice.penaltyType) {
     case "loss10":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1 ? 1 - chance : 1 - chance * 0.10;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1
+        ? 1 - chance
+        : 1 - chance * 0.10;
       break;
     case "loss25":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1 ? 1 - chance : 1 - chance * 0.25;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1
+        ? 1 - chance
+        : 1 - chance * 0.25;
       break;
     case "loss50":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1 ? 1 - chance : 1 - chance * 0.50;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1
+        ? 1 - chance
+        : 1 - chance * 0.50;
       break;
     case "totalLoss":
       penaltyMultiplier = 1 - chance;
@@ -511,13 +532,35 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
       penaltyMultiplier = 1 - chance * 0.06;
       break;
   }
-  let multiplier = baseMultiplier * penaltyMultiplier;
+
+  const immediateValue = (baseMultiplier * penaltyMultiplier - 1) * 100;
   if (choice.bonusType === "reduceLoss") {
-    // 손실 확률 감소는 실제 다음 턴들에서 별도로 적용되므로
-    // 현재 턴의 기대값에 고정 수익처럼 더하지 않습니다.
-    // 안전한 양수 선택지 증가(safePositive)는 출현 가중치에만 반영됩니다.
+    // 기준 미래가치는 안전 선택지의 평균 손실 노출(3.57%)에 20% 감소율을 적용합니다.
+    // 이미 활성화된 보너스와 겹치는 턴은 추가 가치로 계산하지 않습니다.
+    const remainingAfterCurrent = Math.max(0, Math.floor(Number(reduceLossTurns) || 0) - 1);
+    const targetTurns = Math.max(0, Math.floor(Number(choice.bonusTurns) || 5));
+    const addedTurns = Math.max(0, targetTurns - remainingAfterCurrent);
+    const futureValue = addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
+      (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
+    return immediateValue + futureValue;
   }
-  return (multiplier - 1) * 100;
+  return immediateValue;
+}
+
+function getChoiceRiskLevel(choice, currentMoney, startAmount) {
+  const penaltyType = choice.penaltyType === "cashRisk"
+    ? getCashRisk(choice, currentMoney, startAmount).penaltyType
+    : choice.penaltyType;
+  return {
+    none: 0,
+    forceBlue: 1,
+    forceRed: 1,
+    forceGreen: 1,
+    loss10: 2,
+    loss25: 3,
+    loss50: 4,
+    totalLoss: 5
+  }[penaltyType] ?? 0;
 }
 
 function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
@@ -526,37 +569,27 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen")
     .map(choice => scaleCashChoice(choice, currentMoney ?? startAmount));
 
-  // 무패널티 선택지의 추가 가중치는 조합 선택 단계에서 반영합니다.
+  const candidates = [...new Map(pool.map(choice => [choice.id, choice])).values()]
+    .filter(choice => isChoiceAvailableAtMoney(choice, currentMoney));
+  if (candidates.length < targetCount) return candidates;
 
-  const unique = new Map();
-  pool.forEach(choice => unique.set(choice.id, choice));
-  const candidates = [...unique.values()].filter(choice => {
-    if (!isChoiceAvailableAtMoney(choice, currentMoney)) return false;
-
-    // 잔액에 비해 보너스가 너무 커 전액 손실 확률이 과도한 경우에는 제시하지 않습니다.
-    // 고정 금액 보너스 자체를 없애는 것이 아니라, 감당 가능한 잔액 구간에서만 등장시킵니다.
-    if (
-      choice.penaltyType === "cashRisk" &&
-      Number.isFinite(Number(currentMoney)) &&
-      Number(currentMoney) > 0
-    ) {
-      const cashRisk = getCashRisk(choice, currentMoney, startAmount);
-      if (cashRisk.penaltyType === "totalLoss" && cashRisk.chance > 40) {
-        return false;
-      }
-    }
-
-    return true;
-  });
   const valueById = new Map(candidates.map(choice => [
     choice.id,
     estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns)
   ]));
 
-  // 가능한 조합을 전부 평가해 선택지끼리의 기대값 격차가 과도한 조합을 피합니다.
+  // 안전 계열과 위험 계열을 함께 제시해 두 선택지의 위험·보상 구조가 실제로 비교되도록 합니다.
   const combinations = [];
   function build(startIndex, picked) {
     if (picked.length === targetCount) {
+      const hasSafe = picked.some(choice =>
+        SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id)
+      );
+      const hasRisky = picked.some(choice =>
+        RISKY_CHOICES.some(riskyChoice => riskyChoice.id === choice.id)
+      );
+      if (!hasSafe || !hasRisky) return;
+
       const values = picked.map(choice => valueById.get(choice.id));
       const spread = Math.max(...values) - Math.min(...values);
       combinations.push({
@@ -571,18 +604,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
     for (let i = startIndex; i < candidates.length; i++) {
       const choice = candidates[i];
-
-      // 화면에 표시되는 효과와 패널티가 완전히 같은 선택지는
-      // 서로 다른 색상 카드에 중복으로 배치하지 않습니다.
-      // 예: 파랑 +5% / 패널티 19% 확률로 25% 손실,
-      //     빨강 +5% / 패널티 19% 확률로 25% 손실
       const duplicateDisplay = picked.some(item =>
         item.title === choice.title &&
         (item.penalty || "패널티: 없음") === (choice.penalty || "패널티: 없음")
       );
-
       if (picked.some(item => item.id === choice.id) || duplicateDisplay) continue;
-
       picked.push(choice);
       build(i + 1, picked);
       picked.pop();
@@ -592,81 +618,67 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
-  // 기대값이 높은 선택지를 우선 고르는 전략에서도 유리함이 누적되지 않도록,
-  // 조합의 평균이 아니라 가장 높은 선택지 기대값(bestValue)을 0% 부근에 맞춥니다.
-  // 선택지 조합의 다양성을 확보하면서도 지나치게 불공정한 조합은 피합니다.
-  // 2%p 제한은 후보 조합을 과도하게 줄여 선택지가 비슷해지는 문제가 있어 4%p로 복원합니다.
-  const maxSpread = 4;
-  let eligible = available.filter(item => item.spread <= maxSpread);
 
-  const score = item => {
-    const hasFixedAmount = item.choices.some(choice => choice.amountEffect != null);
-    const hasNegativeBonus = item.choices.some(choice => choice.bonusType && choice.effect < 0);
-    const hasNoPenaltyZero = item.choices.some(choice =>
-      choice.id === "safeNoPenalty"
-    );
-    // 플레이어가 더 유리한 선택지를 고르더라도 턴당 기대 손익이 거의 중립이 되도록
-    // '가장 높은 기대값'을 -0.05%에 맞춥니다. 평균값과 선택지 간 격차도 함께 제한합니다.
-    const targetBestValue = -0.05;
-    return 100 * Math.abs(item.bestValue - targetBestValue) +
-      20 * Math.abs(item.averageValue - targetBestValue) +
-      0.5 * item.spread +
-      (hasNoPenaltyZero ? 0.25 : 0) -
-      (hasFixedAmount ? 0.15 : 0) -
-      (hasNegativeBonus ? 0.1 : 0);
-  };
+  // 기대 손익이 크게 치우친 조합만 제외하고, 다양한 위험·보상 조합을 후보로 유지합니다.
+  let eligible = available.filter(item =>
+    item.spread <= 1.25 && item.bestValue <= 0.25 && item.bestValue >= -0.75
+  );
+  if (!eligible.length) eligible = available.filter(item => item.spread <= 2);
+  if (!eligible.length) eligible = available;
+  if (!eligible.length) return candidates.slice(0, targetCount);
 
-  if (eligible.length) {
-    // 균형이 비슷한 조합을 조금 넓게 허용해 선택지 유형이 한쪽으로 쏠리지 않게 합니다.
-    const bestScore = Math.min(...eligible.map(score));
-    eligible = eligible.filter(item => score(item) <= bestScore + 1.5);
-  } else {
-    // 해당 잔액에서 균형 잡힌 조합이 없으면 가장 가까운 조합을 사용합니다.
-    const bestScore = Math.min(...available.map(score));
-    eligible = available.filter(item => score(item) <= bestScore + 1.5);
-  }
+  const targetBestValue = TARGET_CHOICE_EV_PERCENT;
+  const score = item =>
+    4 * Math.abs(item.bestValue - targetBestValue) +
+    2 * Math.abs(item.averageValue - targetBestValue) +
+    0.25 * item.spread;
 
-  // 특정 가치 구간에 선택지가 몰려도, 조합 수가 많은 선택지만 과도하게 자주 나오지 않도록 보정합니다.
-  // eligible 조합 안에서 각 선택지가 포함된 횟수를 세고, 자주 등장할 수 있는 선택지의 조합 가중치를 낮춥니다.
   const occurrenceCount = new Map();
   eligible.forEach(item => {
     item.choices.forEach(choice => {
-      occurrenceCount.set(
-        choice.id,
-        (occurrenceCount.get(choice.id) || 0) + 1
-      );
+      occurrenceCount.set(choice.id, (occurrenceCount.get(choice.id) || 0) + 1);
     });
   });
 
-  // 안전 보너스가 활성화된 경우 기존의 무패널티 선택지 가중치도 유지합니다.
-  const weighted = eligible.map(item => ({
-    item,
-    weight:
-      item.choices.reduce(
-        (sum, choice) => sum + 1 / occurrenceCount.get(choice.id),
-        0
-      ) *
-      // 고정 금액 선택지는 조합 후보에 들어왔을 때 실제로 보일 수 있도록 보정합니다.
-      (item.choices.some(choice => choice.amountEffect != null) ? 1.35 : 1) *
-      // 손실을 감수하고 효과를 얻는 음수 효과+보너스 선택지가 사라지지 않도록 출현을 보정합니다.
-      (item.choices.some(choice => choice.bonusType && choice.effect < 0) ? 2 : 1) *
-      // 0%·패널티 없음 선택지가 다른 조합을 계속 밀어내지 않도록 빈도를 낮춥니다.
-      (item.choices.some(choice => choice.id === "safeNoPenalty") ? 0.35 : 1) *
-      // 희귀 선택지는 기대값을 맞추되, 일반 선택지보다 훨씬 낮은 빈도로 등장시킵니다.
-      item.choices.reduce(
-        (rarity, choice) => Math.min(
-          rarity,
-          Number(choice.rarityWeight) > 0 ? Number(choice.rarityWeight) : 1
-        ),
-        1
-      ) *
-      // '안전한 양수 선택지 확률 증가' 보너스는 실제 양수 효과가 있는 안전 선택지의 출현 가중치에 적용합니다.
-      (safeBoost && item.choices.some(choice =>
-        SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id) &&
-        choice.effect > 0
-      ) ? 1.5 : 1)
-  }));
+  const weighted = eligible.map(item => {
+    const hasBonus = item.choices.some(choice => choice.bonusType && choice.effect < 0);
+    const hasNoPenaltyZero = item.choices.some(choice => choice.id === "safeNoPenalty");
+    const rarityWeight = item.choices.reduce(
+      (rarity, choice) => Math.min(
+        rarity,
+        Number(choice.rarityWeight) > 0 ? Number(choice.rarityWeight) : 1
+      ),
+      1
+    );
+    const riskLevels = item.choices.map(choice =>
+      getChoiceRiskLevel(choice, currentMoney, startAmount)
+    );
+    const riskGap = Math.max(...riskLevels) - Math.min(...riskLevels);
+
+    return {
+      item,
+      weight:
+        item.choices.reduce(
+          (sum, choice) => sum + 1 / occurrenceCount.get(choice.id),
+          0
+        ) *
+        (hasBonus ? 0.8 : 1) *
+        (hasNoPenaltyZero ? 0.35 : 1) *
+        rarityWeight *
+        (1 + Math.min(3, riskGap) * 0.12) *
+        (1 / (1 + score(item))) *
+        (safeBoost && item.choices.some(choice =>
+          SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id) &&
+          choice.effect > 0
+        ) ? 1.5 : 1)
+    };
+  });
+
   const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+  if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+    return candidates.slice(0, targetCount);
+  }
+
   let roll = Math.random() * totalWeight;
   let picked = weighted[weighted.length - 1].item;
   for (const entry of weighted) {
@@ -691,9 +703,18 @@ function findChoice(id) {
 
 function normalizeChoice(raw) {
   if (!raw || typeof raw !== "object") return null;
-
   const known = findChoice(raw.id);
-  return known ? { ...known } : null;
+  if (!known) return null;
+  const normalized = { ...known };
+  // 고정 금액 선택지는 저장 당시 잔액에 맞춰 조정된 금액을 그대로 복구합니다.
+  if (known.amountEffect != null) {
+    const savedAmount = Number(raw.amountEffect);
+    if (Number.isFinite(savedAmount) && savedAmount > 0) {
+      normalized.amountEffect = Math.max(1, Math.round(savedAmount));
+      normalized.title = "+" + moneyFormat.format(normalized.amountEffect) + "원";
+    }
+  }
+  return normalized;
 }
 
 /* =========================
@@ -1614,7 +1635,7 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
   const baseEffectiveChance = cashRisk ? cashRisk.chance : adaptiveChance;
   const effectiveChance = Math.round((
     isLossPenalty && game.reduceLossTurns > 0
-      ? baseEffectiveChance * 0.7
+      ? baseEffectiveChance * LOSS_CHANCE_REDUCTION_FACTOR
       : baseEffectiveChance
   ) * 10) / 10;
 
