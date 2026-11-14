@@ -1610,9 +1610,11 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
     game.startAmount
   );
   const baseEffectiveChance = cashRisk ? cashRisk.chance : adaptiveChance;
-  const effectiveChance = isLossPenalty && game.reduceLossTurns > 0
-    ? baseEffectiveChance * 0.7
-    : baseEffectiveChance;
+  const effectiveChance = Math.round((
+    isLossPenalty && game.reduceLossTurns > 0
+      ? baseEffectiveChance * 0.7
+      : baseEffectiveChance
+  ) * 10) / 10;
 
   if (Math.random() * 100 >= effectiveChance) {
     return choice.bonusType
