@@ -364,6 +364,7 @@ const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
 const REDUCE_LOSS_REFERENCE_EXPOSURE = 0.0357;
+const FORCED_COLOR_EQUIVALENT_COST = 0.06;
 
 function getCashRewardScale(currentMoney) {
   const money = Number(currentMoney);
@@ -529,7 +530,8 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     case "forceBlue":
     case "forceRed":
     case "forceGreen":
-      penaltyMultiplier = 1 - chance * 0.06;
+      // 색상 강제는 직접 금액을 차감하지 않으므로, 후보 기대값 비교에만 선택권 제한의 기준 비용을 반영합니다.
+      penaltyMultiplier = 1 - chance * FORCED_COLOR_EQUIVALENT_COST;
       break;
   }
 
