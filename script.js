@@ -355,38 +355,31 @@ function samePair(a, b) {
   return aIds === bIds;
 }
 
-// 고정 금액 선택지는 시작 판돈을 기준으로 완만하게 규모를 조정합니다.
-// 10,000원 판돈을 기준으로 하되, 작은 판돈에서 보상이 과도해지거나
-// 큰 판돈에서 보상이 지나치게 커지는 것을 막기 위해 제곱근보다 완만한 곡선과 상·하한을 둡니다.
+// 고정 금액 선택지는 현재 잔액에 비례시켜 판돈과 누적 턴에 관계없이
+// 같은 보상 비율을 유지합니다. 기준 잔액 10,000원에서 원래 금액을 그대로 적용합니다.
 const CASH_REWARD_REFERENCE_STAKE = 10000;
-const CASH_REWARD_SCALE_POWER = 0.75;
-const CASH_REWARD_MIN_SCALE = 0.25;
-const CASH_REWARD_MAX_SCALE = 2.5;
 
-function getCashRewardScale(startAmount) {
-  const stake = Number(startAmount);
-  if (!Number.isFinite(stake) || stake <= 0) return 1;
-  const rawScale = Math.pow(stake / CASH_REWARD_REFERENCE_STAKE, CASH_REWARD_SCALE_POWER);
-  return Math.max(CASH_REWARD_MIN_SCALE, Math.min(CASH_REWARD_MAX_SCALE, rawScale));
+function getCashRewardScale(currentMoney) {
+  const money = Number(currentMoney);
+  if (!Number.isFinite(money) || money <= 0) return 1;
+  return money / CASH_REWARD_REFERENCE_STAKE;
 }
 
-function scaleCashChoice(choice, startAmount) {
+function scaleCashChoice(choice, currentMoney) {
   if (!choice || choice.amountEffect == null) return choice ? { ...choice } : choice;
-  const scale = getCashRewardScale(startAmount);
-  const amount = Math.max(100, Math.round((Number(choice.amountEffect) * scale) / 100) * 100);
+  const rawAmount = Number(choice.amountEffect) * getCashRewardScale(currentMoney);
+  // 실제 게임의 최소 판돈이 1,000원이므로 1원 단위 반올림으로 비율 오차를 최소화합니다.
+  const amount = Math.max(1, Math.round(rawAmount));
   return {
     ...choice,
-    amountEffect: amount,
-    title: `+${moneyFormat.format(amount)}원`
+    amountEffect: Number.isFinite(amount) ? amount : Number.MAX_SAFE_INTEGER,
+    title: `+${moneyFormat.format(Number.isFinite(amount) ? amount : Number.MAX_SAFE_INTEGER)}원`
   };
 }
 
 function getCashRisk(choice, currentMoney, startAmount = null) {
   const money = Math.max(0, Number(currentMoney) || 0);
-  const baseline = Number.isFinite(Number(startAmount)) && Number(startAmount) > 0
-    ? Number(startAmount)
-    : money;
-  const amount = Math.max(0, Number(choice.amountEffect) || 0);
+   const amount = Math.max(0, Number(choice.amountEffect) || 0);
   const after = clampMoney(Math.round(money + amount));
   const gain = Math.max(0, after - money);
 
@@ -414,11 +407,9 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
     lossFraction = 1;
   }
 
-  // 손실 확률을 손익분기점보다 아주 조금 낮춰 보상을 체감하게 하되,
-  // 기대 이익은 현재 잔액의 0.1%와 고정 보상액의 1% 중 작은 값으로 제한합니다.
+  // 기대 이익 허용치를 현재 잔액과 보상액에 각각 비례시켜 판돈별 비율을 동일하게 합니다.
   const breakEvenChance = (gain / after / lossFraction) * 100;
-  // 시작 판돈 기준 한도로 고정해 잔액이 커질수록 허용 기대 이익이 커지는 현상을 막습니다.
-  const allowedExpectedGain = Math.min(baseline * 0.001, gain * 0.01);
+  const allowedExpectedGain = Math.min(money * 0.001, gain * 0.01);
   const chanceReduction = (allowedExpectedGain / (after * lossFraction)) * 100;
   const chance = Math.max(
     0,
@@ -428,33 +419,19 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
 }
 
 function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
-  const baseChance = Math.max(0, Math.min(100, Number(choice.penaltyChance) || 0));
-  // 초고위험 ×100배 선택지는 표시된 99% 전액 손실 확률을 잔액에 따라 낮추지 않습니다.
-  if (baseChance === 99) return 99;
-  const money = Number(currentMoney);
-  const baseline = Number(startAmount);
-  if (!Number.isFinite(money) || money <= 0 || !Number.isFinite(baseline) || baseline <= 0) return baseChance;
-
-  // 시뮬레이션 비교에서 선택한 절충값:
-  // 잔액이 늘면 손실 확률을 더 빠르게 높여 이익의 과도한 누적을 억제하고,
-  // 잔액이 줄면 손실 확률을 조금 더 낮춰 지나치게 빠른 파산을 완화합니다.
-  // 상·하한은 유지해 확률 변화가 극단적으로 커지지 않게 합니다.
-  const logRatio = Math.log2(Math.max(0.0001, money / baseline));
-  const multiplier = logRatio >= 0
-    ? Math.min(1.75, 1 + 0.30 * logRatio)
-    : Math.max(0.80, 1 + 0.15 * logRatio);
-  // 99% 전액 손실 선택지도 기본 확률을 그대로 유지합니다. 95%로 제한하면 ×100배 선택지의 기대값이 비정상적으로 커집니다.
-  return Math.max(0, Math.min(99.5, baseChance * multiplier));
+  // 턴수·잔액·시작 판돈과 무관하게 선택지에 정의된 기본 확률을 그대로 사용합니다.
+  return Math.max(0, Math.min(100, Number(choice.penaltyChance) || 0));
 }
 
-function getChoicePenaltyText(choice, currentMoney, startAmount = null) {
+function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
     if (!Number(choice.penaltyChance) || !Number.isFinite(Number(startAmount))) {
       return description;
     }
+    const baseChance = getAdaptivePenaltyChance(choice, currentMoney, startAmount);
     const adjusted = Math.round(
-      getAdaptivePenaltyChance(choice, currentMoney, startAmount) * 10
+      baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? 0.7 : 1) * 10
     ) / 10;
     const chanceText = Number.isInteger(adjusted) ? String(adjusted) : adjusted.toFixed(1);
     return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
@@ -489,7 +466,7 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
   return true;
 }
 
-function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
+function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
 
@@ -509,7 +486,8 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
   const baseMultiplier = choice.effect < 0
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
-  const chance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount) / 100;
+  const baseChance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount);
+  const chance = baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? 0.7 : 1) / 100;
   const moneyAfterEffect = hasMoney ? Math.round(money * baseMultiplier) : null;
   let penaltyMultiplier = 1;
   switch (choice.penaltyType) {
@@ -540,11 +518,11 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null) {
   return (multiplier - 1) * 100;
 }
 
-function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null) {
+function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen")
-    .map(choice => scaleCashChoice(choice, startAmount));
+    .map(choice => scaleCashChoice(choice, currentMoney ?? startAmount));
 
   // 무패널티 선택지의 추가 가중치는 조합 선택 단계에서 반영합니다.
 
@@ -570,7 +548,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   });
   const valueById = new Map(candidates.map(choice => [
     choice.id,
-    estimateChoiceValue(choice, currentMoney, startAmount)
+    estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns)
   ]));
 
   // 가능한 조합을 전부 평가해 선택지끼리의 기대값 격차가 과도한 조합을 피합니다.
@@ -1568,7 +1546,7 @@ function renderGame() {
 
     item.color.textContent = item.colorName.toUpperCase();
     item.title.textContent = choice.title;
-    item.penalty.textContent = getChoicePenaltyText(choice, game.money, game.startAmount);
+    item.penalty.textContent = getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns);
 
     const blocked = Boolean(
       game.forcedColor && game.forcedColor !== item.colorName
@@ -1579,7 +1557,7 @@ function renderGame() {
 
     item.button.setAttribute(
       "aria-label",
-      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money, game.startAmount)}`
+      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns)}`
     );
   });
 
@@ -1755,7 +1733,8 @@ function chooseOption(index) {
     game.threeChoiceMode ? 3 : 2,
     game.safePositiveTurns > 0,
     game.money,
-    game.startAmount
+    game.startAmount,
+    game.reduceLossTurns
   );
 
   const bonusStatus = [
