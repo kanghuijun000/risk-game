@@ -95,13 +95,13 @@ const SAFE_CHOICES = [
     id: "safe10",
     effect: 2,
     title: "+2%",
-    penalty: "패널티: 21% 확률로 10% 손실",
-    penaltyChance: 21,
+    penalty: "패널티: 20.1% 확률로 10% 손실",
+    penaltyChance: 20.1,
     penaltyType: "loss10"
   },
   {
     id: "safe15",
-    effect: 2.7,
+    effect: 2.72,
     title: "+2.7%",
     penalty: "패널티: 45% 확률로 다음 턴 빨강 강제",
     penaltyChance: 45,
@@ -111,21 +111,21 @@ const SAFE_CHOICES = [
     id: "safe20",
     effect: 4,
     title: "+4%",
-    penalty: "패널티: 41% 확률로 10% 손실",
-    penaltyChance: 41,
+    penalty: "패널티: 38.9% 확률로 10% 손실",
+    penaltyChance: 38.9,
     penaltyType: "loss10"
   },
   {
     id: "safe25",
     effect: 5,
     title: "+5%",
-    penalty: "패널티: 20% 확률로 25% 손실",
-    penaltyChance: 20,
+    penalty: "패널티: 19.2% 확률로 25% 손실",
+    penaltyChance: 19.2,
     penaltyType: "loss25"
   },
   {
     id: "safeMinus10",
-    effect: 0.9,
+    effect: 0.86,
     title: "+0.9%",
     penalty: "패널티: 15% 확률로 다음 턴 파랑 강제",
     penaltyChance: 15,
@@ -141,8 +141,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeForceGreen",
-    effect: 1,
-    title: "+1%",
+    effect: 1.04,
+    title: "+1.0%",
     penalty: "패널티: 18% 확률로 다음 턴 초록 강제",
     penaltyChance: 18,
     penaltyType: "forceGreen"
