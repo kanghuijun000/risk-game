@@ -414,15 +414,15 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
     lossFraction = 1;
   }
 
-  // 손실 확률을 손익분기점보다 아주 조금 낮춰 보상을 체감하게 하되,
-  // 기대 이익은 현재 잔액의 0.1%와 고정 보상액의 1% 중 작은 값으로 제한합니다.
+  // 고정 금액 선택지도 다른 선택지와 같은 기준으로 평가합니다.
+  // 손익분기 확률보다 패널티 확률을 조금 높여, 잔액이 커져도
+  // 고정 보상 선택이 턴마다 작은 이익을 누적시키지 않도록 합니다.
   const breakEvenChance = (gain / after / lossFraction) * 100;
-  // 시작 판돈 기준 한도로 고정해 잔액이 커질수록 허용 기대 이익이 커지는 현상을 막습니다.
-  const allowedExpectedGain = Math.min(baseline * 0.001, gain * 0.01);
-  const chanceReduction = (allowedExpectedGain / (after * lossFraction)) * 100;
+  const targetExpectedLoss = money * 0.0005;
+  const chanceIncrease = (targetExpectedLoss / (after * lossFraction)) * 100;
   const chance = Math.max(
     0,
-    Math.min(100, breakEvenChance - chanceReduction)
+    Math.min(100, breakEvenChance + chanceIncrease)
   );
   return { penaltyType, chance, lossFraction };
 }
@@ -619,30 +619,26 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const maxSpread = 4;
   let eligible = available.filter(item => item.spread <= maxSpread);
 
+  const targetExpectedValue = -0.05;
   const score = item => {
-    const hasFixedAmount = item.choices.some(choice => choice.amountEffect != null);
-    const hasNegativeBonus = item.choices.some(choice => choice.bonusType && choice.effect < 0);
-    const hasNoPenaltyZero = item.choices.some(choice =>
-      choice.id === "safeNoPenalty"
-    );
-    // 평균 기대값을 중심으로 균형을 잡습니다. 최고 기대값만 0에 맞추면
-    // 0%·패널티 없음 조합이 과도하게 유리해지고 고정 금액 선택지가 밀려납니다.
-    return 10 * Math.abs(item.averageValue) +
-      0.1 * item.spread +
-      0.1 * Math.abs(item.bestValue) +
-      (hasNoPenaltyZero ? 1 : 0) -
-      (hasFixedAmount ? 0.75 : 0) -
-      (hasNegativeBonus ? 0.5 : 0);
+    const values = item.choices.map(choice => valueById.get(choice.id));
+    const worstValue = Math.min(...values);
+    // 실제 플레이어는 평균 선택지가 아니라 가장 유리한 선택지를 고릅니다.
+    // 따라서 최고 기대값을 우선 목표(-0.05%)에 맞추고 평균과 격차는 보조 지표로 씁니다.
+    return 100 * Math.abs(item.bestValue - targetExpectedValue) +
+      20 * Math.abs(item.averageValue - targetExpectedValue) +
+      0.5 * item.spread +
+      0.05 * Math.abs(worstValue - targetExpectedValue);
   };
 
   if (eligible.length) {
     // 균형이 비슷한 조합을 조금 넓게 허용해 선택지 유형이 한쪽으로 쏠리지 않게 합니다.
     const bestScore = Math.min(...eligible.map(score));
-    eligible = eligible.filter(item => score(item) <= bestScore + 1.5);
+    eligible = eligible.filter(item => score(item) <= bestScore + 0.75);
   } else {
     // 해당 잔액에서 균형 잡힌 조합이 없으면 가장 가까운 조합을 사용합니다.
     const bestScore = Math.min(...available.map(score));
-    eligible = available.filter(item => score(item) <= bestScore + 1.5);
+    eligible = available.filter(item => score(item) <= bestScore + 0.75);
   }
 
   // 특정 가치 구간에 선택지가 몰려도, 조합 수가 많은 선택지만 과도하게 자주 나오지 않도록 보정합니다.
