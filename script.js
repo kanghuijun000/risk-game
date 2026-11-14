@@ -701,16 +701,22 @@ function findChoice(id) {
   return [...SAFE_CHOICES, ...RISKY_CHOICES].find(choice => choice.id === id);
 }
 
-function normalizeChoice(raw) {
+function normalizeChoice(raw, currentMoney = null) {
   if (!raw || typeof raw !== "object") return null;
   const known = findChoice(raw.id);
   if (!known) return null;
   const normalized = { ...known };
-  // 고정 금액 선택지는 저장 당시 잔액에 맞춰 조정된 금액을 그대로 복구합니다.
+  // 새 저장 형식은 이미 잔액에 맞춘 금액을 보존하고, 구버전의 미보정 금액은 현재 잔액 기준으로 한 번만 보정합니다.
   if (known.amountEffect != null) {
     const savedAmount = Number(raw.amountEffect);
     if (Number.isFinite(savedAmount) && savedAmount > 0) {
-      normalized.amountEffect = Math.max(1, Math.round(savedAmount));
+      const money = Number(currentMoney);
+      const isLegacyUnscaled = savedAmount === Number(known.amountEffect) &&
+        Number.isFinite(money) && money > 0 && money !== CASH_REWARD_REFERENCE_STAKE;
+      const restoredAmount = isLegacyUnscaled
+        ? savedAmount * getCashRewardScale(money)
+        : savedAmount;
+      normalized.amountEffect = Math.max(1, Math.round(restoredAmount));
       normalized.title = "+" + moneyFormat.format(normalized.amountEffect) + "원";
     }
   }
@@ -811,7 +817,7 @@ function normalizeState(raw) {
       ? game.choices.map(rawChoice => {
           // 저장된 선택지는 이미 게임 잔액 기준으로 보정된 값입니다.
           // 불러올 때 다시 배율을 곱하면 재접속할 때마다 고정 보상이 중복 확대되므로 그대로 복원합니다.
-          return normalizeChoice(rawChoice);
+          return normalizeChoice(rawChoice, game.money);
         })
       : [];
 
