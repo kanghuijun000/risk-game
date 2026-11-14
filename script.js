@@ -159,8 +159,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeBonus10",
-    effect: -0.5,
-    title: "−0.5%",
+    effect: -0.2,
+    title: "−0.2%",
     penalty: "보너스: 다음 10턴 안전한 양수 선택지 확률 증가",
     penaltyChance: 0,
     penaltyType: "none",
