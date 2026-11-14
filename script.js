@@ -359,9 +359,6 @@ function samePair(a, b) {
 // 10,000원 판돈을 기준으로 하되, 작은 판돈에서 보상이 과도해지거나
 // 큰 판돈에서 보상이 지나치게 커지는 것을 막기 위해 제곱근보다 완만한 곡선과 상·하한을 둡니다.
 const CASH_REWARD_REFERENCE_STAKE = 10000;
-const CASH_REWARD_SCALE_POWER = 0.75;
-const CASH_REWARD_MIN_SCALE = 0.25;
-const CASH_REWARD_MAX_SCALE = 2.5;
 
 function getCashRewardScale(currentMoney) {
   const money = Number(currentMoney);
@@ -384,7 +381,6 @@ function scaleCashChoice(choice, currentMoney) {
 
 function getCashRisk(choice, currentMoney, startAmount = null) {
   const money = Math.max(0, Number(currentMoney) || 0);
-  const baseline = money;
   const amount = Math.max(0, Number(choice.amountEffect) || 0);
   const after = clampMoney(Math.round(money + amount));
   const gain = Math.max(0, after - money);
