@@ -645,13 +645,19 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const weighted = eligible.map(item => {
     const hasBonus = item.choices.some(choice => choice.bonusType && choice.effect < 0);
     const hasNoPenaltyZero = item.choices.some(choice => choice.id === "safeNoPenalty");
-    const rarityWeight = item.choices.reduce(
+    const baseRarityWeight = item.choices.reduce(
       (rarity, choice) => Math.min(
         rarity,
         Number(choice.rarityWeight) > 0 ? Number(choice.rarityWeight) : 1
       ),
       1
     );
+    const containsRareJackpot = item.choices.some(choice =>
+      ["rare25", "rare50", "rare100", "ultra100x"].includes(choice.id)
+    );
+    // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
+    const rarityWeight = baseRarityWeight *
+      (targetCount === 3 && containsRareJackpot ? 0.35 : 1);
     const riskLevels = item.choices.map(choice =>
       getChoiceRiskLevel(choice, currentMoney, startAmount)
     );
