@@ -462,8 +462,8 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
     ? clampMoney(Math.round(money + Number(choice.amountEffect || 0)))
     : Math.round(money * baseMultiplier);
   const isPercentLoss = ["loss10", "loss25", "loss50"].includes(choice.penaltyType);
-  if (money <= 1000 && choice.effect < 0) return false;
-  if (isPercentLoss && choice.penaltyChance > 0 && moneyAfterEffect <= 1000) return false;
+  if (money <= 1 && choice.effect < 0) return false;
+  if (isPercentLoss && choice.penaltyChance > 0 && moneyAfterEffect <= 1) return false;
   return true;
 }
 
@@ -484,7 +484,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     return (expectedFinal / money - 1) * 100;
   }
 
-  if (hasMoney && money <= 1000 && choice.effect < 0) return -100;
+  if (hasMoney && money <= 1 && choice.effect < 0) return -100;
   const baseMultiplier = choice.effect < 0
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
@@ -494,13 +494,13 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
   let penaltyMultiplier = 1;
   switch (choice.penaltyType) {
     case "loss10":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1000 ? 1 - chance : 1 - chance * 0.10;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1 ? 1 - chance : 1 - chance * 0.10;
       break;
     case "loss25":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1000 ? 1 - chance : 1 - chance * 0.25;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1 ? 1 - chance : 1 - chance * 0.25;
       break;
     case "loss50":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1000 ? 1 - chance : 1 - chance * 0.50;
+      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1 ? 1 - chance : 1 - chance * 0.50;
       break;
     case "totalLoss":
       penaltyMultiplier = 1 - chance;
@@ -1575,8 +1575,9 @@ function losePercent(percent) {
   const game = state.activeGame;
   if (!game) return;
 
-  // 실제 손실 효과가 발생한 순간 금액이 1,000원 이하라면 0원 처리
-  if (game.money <= 1000) {
+  // 1원 이하에서만 더 이상 나눌 수 없는 잔액으로 처리합니다.
+  // 1,000원 기준은 판돈별 손실률을 왜곡하므로 사용하지 않습니다.
+  if (game.money <= 1) {
     game.money = 0;
     return;
   }
