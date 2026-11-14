@@ -477,7 +477,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
       Math.round(money + Number(choice.amountEffect || 0))
     );
     const risk = getCashRisk(choice, money, startAmount);
-    const effectiveChance = risk.chance * (reduceLossTurns > 0 ? 0.7 : 1);
+    const effectiveChance = Math.round(risk.chance * (reduceLossTurns > 0 ? 0.7 : 1) * 10) / 10;
     const expectedFinal = moneyAfterEffect * (
       1 - (effectiveChance / 100) * risk.lossFraction
     );
@@ -489,7 +489,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     ? 1 - Math.abs(choice.effect) / 100
     : 1 + choice.effect / 100;
   const baseChance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount);
-  const chance = baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? 0.7 : 1) / 100;
+  const chance = Math.round(baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? 0.7 : 1) * 10) / 1000;
   const moneyAfterEffect = hasMoney ? Math.round(money * baseMultiplier) : null;
   let penaltyMultiplier = 1;
   switch (choice.penaltyType) {
