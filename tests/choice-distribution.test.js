@@ -76,4 +76,12 @@ test("선택지 등장 분포: 판돈·모드별 위험도와 수익 규모의 �
 
   console.log("\\nCHOICE_DISTRIBUTION_JSON=" + JSON.stringify(rows));
   if (rows.length !== stakes.length * 2) throw new Error("incomplete distribution matrix");
+  for (const row of rows.filter(item => item.mode === 2)) {
+    for (const pair of ["0-1", "0-2", "1-2"]) {
+      assert.ok(
+        row.riskTierPairSharePct[pair] > 0,
+        `two-choice mode must generate risk-tier pair ${pair} at stake ${row.stake}`
+      );
+    }
+  }
 });
