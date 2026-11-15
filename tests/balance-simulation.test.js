@@ -4,6 +4,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadBalanceEngine } = require("./balance-simulation-helpers");
 
+function resolveForcedColor(penaltyType, choiceCount, api) {
+  if (penaltyType === "forceRandom") {
+    return api.chooseForcedColor(choiceCount, api.random());
+  }
+  if (["forceBlue", "forceRed", "forceGreen"].includes(penaltyType)) {
+    return penaltyType.slice(5).toLowerCase();
+  }
+  return null;
+}
+
 function wilsonInterval(successes, n) {
   const z = 1.96;
   const p = successes / n;
@@ -113,8 +123,8 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     if (api.random() * 100 < details.chance) {
       if (["loss10", "loss25", "loss50", "totalLoss"].includes(details.penaltyType)) {
         money = api.getMoneyAfterPenalty(money, details.penaltyType);
-      } else if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
-        forcedColor = details.penaltyType.slice(5).toLowerCase();
+      } else if (["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(details.penaltyType)) {
+        forcedColor = resolveForcedColor(details.penaltyType, choiceCount, api);
       }
     }
     maxBalance = Math.max(maxBalance, money);
@@ -231,4 +241,19 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 1~100턴 결과", {
   }
   assert.equal(rows.length, stakes.length * modes.length * strategies.length * horizons.length);
   assert.ok(rows.every(row => Number.isFinite(row.meanReturnPct)));
+});
+
+
+test("장기 시뮬레이터는 고정·무작위 색상 강제와 다음 턴 제한을 실제 규칙대로 처리한다", () => {
+  const api = loadBalanceEngine(0xabcdef98);
+  assert.equal(resolveForcedColor("forceBlue", 3, api), "blue");
+  assert.equal(resolveForcedColor("forceRed", 2, api), "red");
+  assert.equal(resolveForcedColor("forceGreen", 3, api), "green");
+  api.setSeed(0x12345678);
+  for (const mode of [2, 3]) {
+    for (let i = 0; i < 1000; i++) {
+      const color = resolveForcedColor("forceRandom", mode, api);
+      assert.ok(mode === 2 ? ["blue", "red"].includes(color) : ["blue", "red", "green"].includes(color));
+    }
+  }
 });
