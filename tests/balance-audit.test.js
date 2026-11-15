@@ -174,7 +174,10 @@ test("손실 감소 보너스 가격은 모드별 실측 기준과 기대값이 
     const expectedCost = count === 2 ? 9.02 : 10.56;
     assert.ok(Math.abs(prepared.effect + expectedCost) < 0.000001);
     const value = api.estimateChoiceValue(prepared, 10000, 10000, 0, count);
+    const fallbackValue = api.estimateChoiceValue(prepared, null, null, 0, count);
     assert.ok(Math.abs(value - api.TARGET_CHOICE_EV_PERCENT) < 0.000001);
+    assert.ok(Number.isFinite(fallbackValue));
+    assert.ok(Math.abs(fallbackValue - api.TARGET_CHOICE_EV_PERCENT) < 0.02);
     assert.equal(
       api.getReduceLossReferenceExposure(count),
       count === 2 ? 0.0897 : 0.1051
