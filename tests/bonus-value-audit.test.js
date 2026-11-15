@@ -1,6 +1,7 @@
 "use strict";
 
 const test = require("node:test");
+const assert = require("node:assert/strict");
 const { loadBalanceEngine } = require("./balance-simulation-helpers");
 
 function summarizeMenus(api, { stake, mode, reduceLossTurns = 0, safeBoost = false, samples = 2500, seed }) {
