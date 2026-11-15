@@ -54,6 +54,7 @@ function loadBalanceEngine(seed = 0x5eed1234, options = {}) {
       getEffectivePenaltyDetails, getMoneyAfterChoiceEffect, getMoneyAfterPenalty,
       scaleCashChoice, estimateChoiceValue, TARGET_CHOICE_EV_PERCENT,
       getForcedColorEquivalentCost, getReduceLossReferenceExposure,
+      getSafePositiveReferenceValue, getAddedSafePositiveTurns,
       prepareChoiceForGeneration, calculateBankPartialInterest, calculateBankAccrual,
       preserveLegacyForcedColorChoice,
       random: () => Math.random(), chooseForcedColor, setSeed
