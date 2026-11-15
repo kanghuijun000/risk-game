@@ -883,9 +883,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     .filter(choice => isChoiceAvailableAtMoney(choice, currentMoney));
   if (candidates.length < targetCount) return candidates;
 
+  // 선택지 구성은 일시적 손실 감소 보너스 전의 고유 기대값을 기준으로 유지합니다.
+  // 보너스가 실제 손실 확률을 낮춘 뒤 생성기가 더 위험한 메뉴로 보상하지 않도록 분리합니다.
   const valueById = new Map(candidates.map(choice => [
     choice.id,
-    estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns, targetCount)
+    estimateChoiceValue(choice, currentMoney, startAmount, 0, targetCount)
   ]));
   const riskById = new Map(candidates.map(choice => [
     choice.id,
