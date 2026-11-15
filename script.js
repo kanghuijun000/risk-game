@@ -584,8 +584,8 @@ function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, re
   const reductionApplies =
     isReducibleLossPenalty(penaltyType) && Number(reduceLossTurns) > 0;
   const chance = Math.max(0, Math.min(100, Math.round(
-    baseChance * (reductionApplies ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 100
-  ) / 100));
+    baseChance * (reductionApplies ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10000
+  ) / 10000));
 
   return {
     cashRisk,
@@ -605,7 +605,7 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
     const details = getEffectivePenaltyDetails(
       choice, currentMoney, startAmount, reduceLossTurns
     );
-    const chanceText = String(Number(details.chance.toFixed(2)));
+    const chanceText = String(Number(details.chance.toFixed(4)));
     return description.replace(/[\\d.]+% 확률/, chanceText + "% 확률");
   }
 
