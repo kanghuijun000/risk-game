@@ -1044,11 +1044,23 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   return selected;
 }
 
-function calculateBankPartialInterest(principal, rate, elapsedMs) {
+function calculateBankAccrual(principal, rate, elapsedMs, fractionalRemainder = 0) {
   const safePrincipal = Math.max(0, Number(principal) || 0);
   const safeRate = Math.max(0, Number(rate) || 0);
   const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
-  return Math.floor(safePrincipal * (safeRate / 100) * (safeElapsed / 60000));
+  const safeRemainder = Math.max(0, Math.min(0.999999999, Number(fractionalRemainder) || 0));
+  const exactInterest =
+    safePrincipal * (safeRate / 100) * (safeElapsed / BANK_MINUTE_MS) +
+    safeRemainder;
+  const whole = Math.floor(exactInterest + 1e-10);
+  return {
+    whole,
+    remainder: Math.max(0, Math.min(0.999999999, exactInterest - whole))
+  };
+}
+
+function calculateBankPartialInterest(principal, rate, elapsedMs) {
+  return calculateBankAccrual(principal, rate, elapsedMs).whole;
 }
 
 function findChoice(id) {
@@ -1096,6 +1108,7 @@ function defaultState() {
     bankPrincipal: 0,
     bankDepositLimit: 5000,
     bankInterest: 0,
+    bankFractionalInterest: 0,
     bankElapsedMs: 0,
     bankRate: INITIAL_BANK_RATE,
     threeChoiceUnlocked: false,
@@ -1139,6 +1152,10 @@ function normalizeState(raw) {
       clampMoney(raw.bankPrincipal ?? raw.bankMoney ?? 0)
     ),
     bankInterest: clampMoney(raw.bankInterest ?? raw.interest ?? 0),
+    bankFractionalInterest: Math.max(
+      0,
+      Math.min(0.999999999, Number(raw.bankFractionalInterest) || 0)
+    ),
     bankRate: Math.max(
       1,
       Math.min(10, Math.floor(Number(raw.bankRate) || INITIAL_BANK_RATE))
@@ -2561,22 +2578,27 @@ function syncBankClock(now = Date.now()) {
   while (state.bankElapsedMs >= BANK_MINUTE_MS) {
     state.bankElapsedMs -= BANK_MINUTE_MS;
 
-    const interest = Math.floor(
-      state.bankPrincipal * (state.bankRate / 100)
+    const accrual = calculateBankAccrual(
+      state.bankPrincipal,
+      state.bankRate,
+      BANK_MINUTE_MS,
+      state.bankFractionalInterest
     );
-
-    state.bankInterest = addMoney(state.bankInterest, interest);
+    state.bankInterest = addMoney(state.bankInterest, accrual.whole);
+    state.bankFractionalInterest = accrual.remainder;
   }
 }
 
 function settleBankPartialInterest() {
   if (state.bankPrincipal <= 0 || state.bankElapsedMs <= 0) return;
-  const partialInterest = calculateBankPartialInterest(
+  const accrual = calculateBankAccrual(
     state.bankPrincipal,
     state.bankRate,
-    state.bankElapsedMs
+    state.bankElapsedMs,
+    state.bankFractionalInterest
   );
-  state.bankInterest = addMoney(state.bankInterest, partialInterest);
+  state.bankInterest = addMoney(state.bankInterest, accrual.whole);
+  state.bankFractionalInterest = accrual.remainder;
 }
 
 function resetBankMinute() {
@@ -2736,11 +2758,12 @@ $("confirmMoneyButton").addEventListener("click", () => {
 
     resetBankMinute();
   } else {
-    const pendingPartialInterest = calculateBankPartialInterest(
+    const pendingPartialInterest = calculateBankAccrual(
       state.bankPrincipal,
       state.bankRate,
-      state.bankElapsedMs
-    );
+      state.bankElapsedMs,
+      state.bankFractionalInterest
+    ).whole;
     const total = addMoney(
       state.bankPrincipal,
       addMoney(state.bankInterest, pendingPartialInterest)
