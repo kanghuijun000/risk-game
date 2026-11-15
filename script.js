@@ -92,6 +92,15 @@ function clockText(seconds) {
 
 const SAFE_CHOICES = [
   {
+    id: "micro01",
+    effect: 0.1,
+    title: "+0.1%",
+    penalty: "패널티: 1.5% 확률로 10% 손실",
+    penaltyChance: 1.5,
+    penaltyType: "loss10",
+    rarityWeight: 0.9
+  },
+  {
     id: "micro03",
     effect: 0.3,
     title: "+0.3%",
