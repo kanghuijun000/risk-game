@@ -145,6 +145,7 @@ test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨
       for (let i = 0; i < 400; i++) {
         const choices = api.generateChoices(null, count, false, stake, stake, i % 6);
         assert.equal(choices.length, count, `${stake} won / ${count} choices returned wrong count`);
+        assert.ok(choices.some(choice => !choice.bonusType), "a choice set must retain at least one ordinary reward option");
         const tiers = choices.map(choice =>
           api.getChoiceRiskProfile(choice, stake, stake, i % 6, count).tier
         );
