@@ -26,7 +26,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
     return randomState / 0x100000000;
   };
 
-  const context = { Math: seededMath, Intl };
+  const context = { Math: seededMath, Intl, setSeed: value => { randomState = value >>> 0; } };
   vm.createContext(context);
   vm.runInContext(`
     const moneyFormat = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
@@ -57,8 +57,8 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       getReduceLossReferenceExposure,
       prepareChoiceForGeneration,
       calculateBankPartialInterest,
-      random: () => seededMath.random(),
-      setSeed: value => { randomState = value >>> 0; }
+      random: () => Math.random(),
+      setSeed
     };
   `, context);
   return context.balanceApi;
