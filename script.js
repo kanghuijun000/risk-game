@@ -92,6 +92,22 @@ function clockText(seconds) {
 
 const SAFE_CHOICES = [
   {
+    id: "micro03",
+    effect: 0.3,
+    title: "+0.3%",
+    penalty: "패널티: 3.5% 확률로 10% 손실",
+    penaltyChance: 3.5,
+    penaltyType: "loss10"
+  },
+  {
+    id: "micro05",
+    effect: 0.5,
+    title: "+0.5%",
+    penalty: "패널티: 5.5% 확률로 10% 손실",
+    penaltyChance: 5.5,
+    penaltyType: "loss10"
+  },
+  {
     id: "safe10",
     effect: 2,
     title: "+2%",
@@ -201,6 +217,30 @@ const RISKY_CHOICES = [
     penalty: "패널티: 16.6% 확률로 50% 손실",
     penaltyChance: 16.6,
     penaltyType: "loss50"
+  },
+  {
+    id: "risk110",
+    effect: 10,
+    title: "+10%",
+    penalty: "패널티: 36.5% 확률로 25% 손실",
+    penaltyChance: 36.5,
+    penaltyType: "loss25"
+  },
+  {
+    id: "risk130",
+    effect: 13,
+    title: "+13%",
+    penalty: "패널티: 46.2% 확률로 25% 손실",
+    penaltyChance: 46.2,
+    penaltyType: "loss25"
+  },
+  {
+    id: "risk160",
+    effect: 16,
+    title: "+16%",
+    penalty: "패널티: 55.3% 확률로 25% 손실",
+    penaltyChance: 55.3,
+    penaltyType: "loss25"
   },
   {
     id: "risk200",
@@ -329,6 +369,15 @@ const RISKY_CHOICES = [
     rarityWeight: 0.05
   },
   {
+    id: "rare900",
+    effect: 900,
+    title: "+900%",
+    penalty: "초희귀 잭팟: 90% 확률로 전액 손실",
+    penaltyChance: 90,
+    penaltyType: "totalLoss",
+    rarityWeight: 0.002
+  },
+  {
     id: "ultra100x",
     effect: 9900,
     title: "×100배",
@@ -363,7 +412,7 @@ function samePair(a, b) {
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
-const REDUCE_LOSS_REFERENCE_EXPOSURE = 0.0357;
+const REDUCE_LOSS_REFERENCE_EXPOSURE = 0.061;
 const FORCED_COLOR_EQUIVALENT_COST = 0.06;
 
 function getCashRewardScale(currentMoney) {
@@ -432,6 +481,34 @@ function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
 function isReducibleLossPenalty(penaltyType) {
   // 보너스는 부분 손실 패널티에만 적용합니다. 전액 손실 잭팟의 확률은 보존합니다.
   return ["loss10", "loss25", "loss50"].includes(penaltyType);
+}
+
+function getAddedReduceLossTurns(reduceLossTurns, bonusTurns = 5) {
+  const remainingAfterCurrent = Math.max(
+    0, Math.floor(Number(reduceLossTurns) || 0) - 1
+  );
+  const targetTurns = Math.max(0, Math.floor(Number(bonusTurns) || 5));
+  return Math.max(0, targetTurns - remainingAfterCurrent);
+}
+
+function prepareChoiceForGeneration(choice, reduceLossTurns = 0) {
+  if (!choice || choice.bonusType !== "reduceLoss") return choice;
+  const addedTurns = getAddedReduceLossTurns(
+    reduceLossTurns, choice.bonusTurns
+  );
+  if (addedTurns <= 0) return null;
+
+  // 이미 활성화된 턴과 겹치지 않는 추가 턴만큼만 보험료를 부과합니다.
+  const cost = Math.round(
+    addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
+    (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 10000
+  ) / 100;
+  const costText = cost.toFixed(2).replace(/\\.?0+$/, "");
+  return {
+    ...choice,
+    effect: -cost,
+    title: `−${costText}%`
+  };
 }
 
 function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
@@ -650,7 +727,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen")
-    .map(choice => scaleCashChoice(choice, currentMoney ?? startAmount));
+    .map(choice => prepareChoiceForGeneration(
+      scaleCashChoice(choice, currentMoney ?? startAmount),
+      reduceLossTurns
+    ))
+    .filter(Boolean);
 
   const candidates = [...new Map(pool.map(choice => [choice.id, choice])).values()]
     .filter(choice => isChoiceAvailableAtMoney(choice, currentMoney));
@@ -673,8 +754,12 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     if (picked.length === targetCount) {
       const tiers = picked.map(choice => riskById.get(choice.id).tier);
       const uniqueTiers = new Set(tiers);
-      if (targetCount === 2 && uniqueTiers.size < 2) return;
-      if (targetCount === 3 && uniqueTiers.size < 3) return;
+      if (targetCount === 2 && (
+        !uniqueTiers.has(0) || uniqueTiers.size < 2
+      )) return;
+      if (targetCount === 3 && (
+        !uniqueTiers.has(0) || !uniqueTiers.has(1) || !uniqueTiers.has(2)
+      )) return;
 
       const values = picked.map(choice => valueById.get(choice.id));
       const spread = Math.max(...values) - Math.min(...values);
@@ -744,7 +829,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       1
     );
     const containsRareJackpot = item.choices.some(choice =>
-      ["rare25", "rare50", "rare100", "ultra100x"].includes(choice.id)
+      ["rare25", "rare50", "rare100", "rare900", "ultra100x"].includes(choice.id)
     );
     // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
     const rarityWeight = baseRarityWeight *
@@ -753,6 +838,8 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       riskById.get(choice.id).tier
     );
     const riskGap = Math.max(...riskLevels) - Math.min(...riskLevels);
+    const highRiskPairWeight =
+      targetCount === 2 && riskLevels.includes(2) ? 0.7 : 1;
 
     return {
       item,
@@ -766,6 +853,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
         (hasNoPenaltyZero ? 0.35 : 1) *
         rarityWeight *
         (1 + riskGap * 0.12) *
+        highRiskPairWeight *
         (1 / (1 + score(item))) *
         (safeBoost && item.choices.some(choice =>
           SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id) &&
