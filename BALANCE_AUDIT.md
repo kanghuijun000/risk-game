@@ -222,3 +222,29 @@ A separate seeded sample generated 6,000 choice sets per mode at a 10,000 balanc
 The largest observed mean-EV gap was 0.0006 percentage points in two-choice mode and 0.0005 percentage points in three-choice mode. These differences are small relative to the sampling error and do not show a meaningful structural color advantage in this sample. This is an estimated-value comparison, not a long-run realized payout test under forced-color chains.
 
 Current source inventory remains 11 safe entries and 23 risky entries (34 defined entries); one obsolete duplicate is filtered out during generation.
+
+## Iteration 4 — focused triage and regression speed (2026-11-16)
+
+Latest inspected branch snapshot before this iteration:
+- Branch: `balance-system-audit`
+- Commit: `62f78697b86e371e4b167d98e5f9415aa8d6cce0`
+- Script URL: `script.js?v=77`
+- Service-worker cache: `risk-game-cache-v106`
+- Latest Actions run: 18 tests passed, 0 failed. The complete run took about 8 minutes 57 seconds; the 20-turn Monte Carlo alone took about 8 minutes 57 seconds.
+
+### Focused findings
+
+1. The expensive Monte Carlo is useful as an occasional diagnostic, but not as a mandatory test on every small change. It covered 9,600 sessions (5 stakes × 2 modes × 6 strategies × 160 sessions). It is now opt-in via manual workflow dispatch; normal PR runs skip it.
+2. The latest 160-session-per-cell sample showed low-risk strategy ruin rates of 0% in 2-choice and 0.6–3.1% in 3-choice. Highest-EV strategy ruin rates were 21.3–28.1% in 2-choice and 46.9–52.5% in 3-choice. This is a strategy-dependent tail-risk trade-off, not evidence by itself that the odds should be changed. High-EV results had large positive means but deeply negative medians due to rare high payouts.
+3. A real accessibility-label bug was found: the visible penalty text used `game.choices.length`, but the button's `aria-label` omitted it and therefore defaulted to 2-choice calculations. The label now passes the actual choice count; a regression assertion was added.
+4. The forced-color audit's output field still reported the old 6%/12% coefficients after the source had changed to 0.35%/0.5425%. The report now reads the live helper value. Its measurement compares a random position in the current menu against the strategy's unrestricted pick; it is only a rough diagnostic, not an exact next-turn forced-color chain model. Therefore the current coefficient remains provisional and is not claimed to be fully empirically calibrated.
+5. The source comment describing the old 6%/12% values was stale and has been corrected. No gameplay odds were changed in this iteration.
+
+### Faster routine verification
+
+- The full 20-turn simulation remains available through manual workflow dispatch; normal PR checks do not spend several minutes on it.
+- Routine risk-tier composition, color-position, income/risk distribution, and forced-color sampling counts were reduced to smoke-test levels. Earlier larger seeded samples remain documented above as the broader evidence.
+- The forced-color test now reports the actual configured coefficients rather than stale constants.
+- `index.html` script URL and service-worker cache are bumped to `v78` and `risk-game-cache-v107` for the source correction.
+
+The next focused check is the new fast PR run. The latest code is still isolated on the draft PR; no production deployment, Supabase mutation, or player-data change has occurred.
