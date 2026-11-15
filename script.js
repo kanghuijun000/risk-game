@@ -761,21 +761,31 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
     : penaltyLoss;
 
   const chance = details.chance / 100;
+  const baseChance = details.baseChance / 100;
   const expectedLossFraction =
     baseLoss * (1 - chance) + penaltyOutcomeLoss * chance;
+  const baseExpectedLossFraction =
+    baseLoss * (1 - baseChance) + penaltyOutcomeLoss * baseChance;
   const worstCaseLossFraction = Math.max(baseLoss, penaltyOutcomeLoss);
 
-  // 기대 손실(%) + 최악 손실률의 20% 가중치로 위험 점수를 산출합니다.
+  // 실제 위험 점수에는 보너스가 적용된 확률을 사용합니다.
   const riskScore =
     expectedLossFraction * 100 + worstCaseLossFraction * 20;
-  const tier = riskScore <= 6.5 ? 0 : riskScore <= 20 ? 1 : 2;
+  // 위험 등급은 일시적 보너스에 흔들리지 않도록 보너스 적용 전 기본 확률로 고정합니다.
+  // 그래야 보너스가 위험을 낮춘 직후 생성기가 더 위험한 선택지를 끌어와 효과를 상쇄하지 않습니다.
+  const baseRiskScore =
+    baseExpectedLossFraction * 100 + worstCaseLossFraction * 20;
+  const tier = baseRiskScore <= 6.5 ? 0 : baseRiskScore <= 20 ? 1 : 2;
 
   return {
     tier,
     riskScore,
+    baseRiskScore,
     chance: details.chance,
+    baseChance: details.baseChance,
     lossFraction: worstCaseLossFraction,
     expectedLossFraction,
+    baseExpectedLossFraction,
     penaltyType: details.penaltyType,
     reductionApplies: details.reductionApplies
   };
