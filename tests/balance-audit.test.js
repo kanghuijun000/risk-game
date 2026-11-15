@@ -97,6 +97,9 @@ test("은행 부분 정산을 여러 번 해도 소수 이자가 누적되어 1�
   assert.ok(source.includes("bankFractionalInterest: 0"));
   assert.ok(source.includes("raw.bankFractionalInterest"));
   assert.ok(source.includes("state.bankFractionalInterest = accrual.remainder"));
+  assert.ok(source.includes("const withdrawableAmount = addMoney("));
+  assert.ok(source.includes("moneyText(withdrawableAmount)"));
+
 });
 
 test("입금·출금·금리 업그레이드 모두 변경 전 부분 이자를 먼저 정산한다", () => {
