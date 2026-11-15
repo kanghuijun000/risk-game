@@ -384,7 +384,7 @@ test("기존 저장 게임의 색상 강제 선택지는 과거 확률과 효과
 
 test("저장된 기존 색상 강제 선택지는 재생성된 기본 정의가 아닌 저장 당시 규칙으로 복원한다", () => {
   const normalizeStart = source.indexOf("function normalizeChoice(");
-  const normalizeEnd = source.indexOf("/* =========================\\n   저장과 복구", normalizeStart);
+  const normalizeEnd = source.indexOf("/* =========================" + String.fromCharCode(10) + "   저장과 복구", normalizeStart);
   assert.ok(normalizeStart >= 0 && normalizeEnd > normalizeStart);
   assert.match(source.slice(normalizeStart, normalizeEnd), /preserveLegacyForcedColorChoice\\(\\{ \.\.\.known \\}, raw\\)/);
 
