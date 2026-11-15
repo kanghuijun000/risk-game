@@ -35,6 +35,18 @@ The current reward range includes:
 
 The earlier claim that the smallest positive choice was about +0.9% was incorrect for this current source: +0.3% exists.
 
+## Current mathematical rules
+
+- Target estimated expected return before temporary bonuses: `TARGET_CHOICE_EV_PERCENT = -0.05`.
+- Fixed-cash reference stake: 10,000.
+- Partial-loss probability reduction while the bonus is active: 20% (`LOSS_CHANCE_REDUCTION_FACTOR = 0.8)); full-loss jackpot probabilities are not reduced.
+- Forced-color opportunity-cost approximation: 6%.
+- Reduce-loss bonus future-exposure estimate: 6.1% (`REDUCE_LOSS_REFERENCE_EXPOSURE = 0.061)); this is currently a single shared value for both choice modes and is under review because the observed benefit differs by mode.
+- Risk score: expected loss percentage plus 20 times the worst-case loss fraction.
+- Risk tiers: low <=6.5; medium <=20; high >20.
+- Two-choice generation requires low risk plus one different tier. Three-choice generation requires one of each tier.
+- The generator first filters for close expected values, then relaxes the EV spread when needed; a dedicated fallback chooses the best available risk/income mix when normal combinations cannot be built.
+
 ## Verification performed
 
 ### Static checks
