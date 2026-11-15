@@ -126,12 +126,12 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
   };
 }
 
-test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { timeout: 240000 }, () => {
+test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { timeout: 600000 }, () => {
   const api = loadBalanceEngine(0x7a11ce55);
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
   const strategies = ["random", "lowestRisk", "highestEV", "rerollAware"];
-  const sessionsPerCell = 40;
+  const sessionsPerCell = 100;
   const rows = [];
 
   for (const stake of stakes) {
