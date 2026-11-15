@@ -53,7 +53,9 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       scaleCashChoice,
       estimateChoiceValue,
       TARGET_CHOICE_EV_PERCENT,
-      getForcedColorEquivalentCost
+      getForcedColorEquivalentCost,
+      getReduceLossReferenceExposure,
+      prepareChoiceForGeneration
     };
   `, context);
   return context.balanceApi;
@@ -140,6 +142,22 @@ test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 
         assert.ok(Math.abs(three.chance * 2 - two.chance) <= 0.0002);
       }
     }
+  }
+});
+
+test("손실 감소 보너스 가격은 모드별 실측 기준과 기대값이 일치한다", () => {
+  const api = loadBalanceEngine(0x27182818);
+  const bonus = api.SAFE_CHOICES.find(choice => choice.id === "safeBonus5");
+  for (const count of [2, 3]) {
+    const prepared = api.prepareChoiceForGeneration(bonus, 0, count);
+    const expectedCost = count === 2 ? 9.02 : 10.56;
+    assert.ok(Math.abs(prepared.effect + expectedCost) < 0.000001);
+    const value = api.estimateChoiceValue(prepared, 10000, 10000, 0, count);
+    assert.ok(Math.abs(value - api.TARGET_CHOICE_EV_PERCENT) < 0.000001);
+    assert.equal(
+      api.getReduceLossReferenceExposure(count),
+      count === 2 ? 0.0897 : 0.1051
+    );
   }
 });
 
