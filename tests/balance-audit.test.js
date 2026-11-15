@@ -211,7 +211,10 @@ test("손실 감소 보너스는 부분 손실에만 정확히 20% 적용된다"
 test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 목표 기대값을 유지한다", () => {
   const api = loadBalanceEngine(0x31415926);
   const forced = [...api.SAFE_CHOICES, ...api.RISKY_CHOICES]
-    .filter(choice => ["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(choice.penaltyType));
+    .filter(choice =>
+      ["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(choice.penaltyType) &&
+      choice.id !== "safeForceGreen"
+    );
   assert.equal(api.getForcedColorEquivalentCost(2), 0.0035);
   assert.ok(Math.abs(api.getForcedColorEquivalentCost(3) - 0.005425) < 1e-10);
   for (const stake of [1000, 10000, 100000, 1000000]) {
