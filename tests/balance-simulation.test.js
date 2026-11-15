@@ -70,7 +70,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
       const bestScore = Math.max(...ranked.map(item => item.ev));
       if (bestScore < -0.04) {
         const newChoices = api.generateChoices(
-          choices, choiceCount, safePositiveTurns > 0, money, stake, reduceLossTurns
+          choices, choiceCount, safePositiveTurns, money, stake, reduceLossTurns
         );
         // 실제 게임은 새 메뉴가 일부 선택지만 반환하더라도 리롤을 소비하고 그 결과로 교체합니다.
         choices = newChoices;
@@ -159,7 +159,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     maxBalance = Math.max(maxBalance, money);
     maxDrawdown = Math.max(maxDrawdown, (maxBalance - money) / Math.max(1, maxBalance));
     choices = api.generateChoices(
-      choices, choiceCount, safePositiveTurns > 0, money, stake, reduceLossTurns
+      choices, choiceCount, safePositiveTurns, money, stake, reduceLossTurns
     );
     if (checkpoints.includes(turns)) snapshots.push(makeSnapshot(turns));
   }
