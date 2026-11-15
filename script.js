@@ -1103,11 +1103,28 @@ function findChoice(id) {
   return [...SAFE_CHOICES, ...RISKY_CHOICES].find(choice => choice.id === id);
 }
 
+function preserveLegacyForcedColorChoice(normalized, raw) {
+  const legacyTypes = {
+    safe15: "forceRed",
+    safeMinus10: "forceBlue",
+    safeForceGreen: "forceGreen"
+  };
+  if (!raw || legacyTypes[raw.id] !== raw.penaltyType) return normalized;
+
+  normalized.penaltyType = raw.penaltyType;
+  const savedChance = Number(raw.penaltyChance);
+  if (Number.isFinite(savedChance)) {
+    normalized.penaltyChance = Math.max(0, Math.min(100, savedChance));
+  }
+  if (typeof raw.penalty === "string") normalized.penalty = raw.penalty;
+  return normalized;
+}
+
 function normalizeChoice(raw, currentMoney = null) {
   if (!raw || typeof raw !== "object") return null;
   const known = findChoice(raw.id);
   if (!known) return null;
-  const normalized = { ...known };
+  const normalized = preserveLegacyForcedColorChoice({ ...known }, raw);
   // 손실 감소 보너스는 남은 보너스 턴에 따라 비용이 달라지므로 저장된 실제 비용과 표시를 그대로 복원합니다.
   if (known.bonusType === "reduceLoss") {
     const savedEffect = Number(raw.effect);

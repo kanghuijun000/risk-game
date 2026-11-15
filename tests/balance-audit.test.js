@@ -379,3 +379,21 @@ test("기존 저장 게임의 색상 강제 선택지는 과거 확률과 효과
   assert.equal(green.penaltyChance, 18);
   assert.equal(green.penaltyType, "forceGreen");
 });
+
+
+test("저장된 기존 색상 강제 선택지는 재생성된 기본 정의가 아닌 저장 당시 규칙으로 복원한다", () => {
+  const api = loadBalanceEngine(0x98765432);
+  const cases = [
+    { id: "safe15", penaltyType: "forceRed", penaltyChance: 45, penalty: "old red" },
+    { id: "safeMinus10", penaltyType: "forceBlue", penaltyChance: 15, penalty: "old blue" },
+    { id: "safeForceGreen", penaltyType: "forceGreen", penaltyChance: 18, penalty: "old green" }
+  ];
+  for (const raw of cases) {
+    const restored = api.preserveLegacyForcedColorChoice({ id: raw.id, penaltyType: "loss10", penaltyChance: 9 }, raw);
+    assert.equal(restored.penaltyType, raw.penaltyType);
+    assert.equal(restored.penaltyChance, raw.penaltyChance);
+    assert.equal(restored.penalty, raw.penalty);
+  }
+  const unrelated = { id: "safe15", penaltyType: "loss25", penaltyChance: 10 };
+  assert.equal(api.preserveLegacyForcedColorChoice({ ...unrelated }, unrelated).penaltyType, "loss25");
+});
