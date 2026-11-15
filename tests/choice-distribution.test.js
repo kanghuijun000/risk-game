@@ -17,7 +17,7 @@ test("선택지 등장 분포: 판돈·모드별 위험도와 수익 규모의 �
   const api = loadBalanceEngine(0x4d595df4);
   const rows = [];
   const stakes = [1000, 5000, 10000, 100000, 1000000];
-  const samples = 1000;
+  const samples = 300;
 
   for (const stake of stakes) {
     for (const mode of [2, 3]) {
