@@ -50,12 +50,12 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     if (strategy === "rerollAware" && rerolls > 0) {
       const bestScore = Math.max(...ranked.map(item => item.ev));
       if (bestScore < -0.04) {
-        const oldChoices = choices;
         const newChoices = api.generateChoices(
           choices, choiceCount, safePositiveTurns > 0, money, stake, reduceLossTurns
         );
-        if (newChoices.length === choiceCount &&
-            newChoices.some(item => !oldChoices.some(old => old.id === item.id))) {
+        // 실제 게임은 메뉴가 동일하게 재생성되더라도 리롤을 소비합니다.
+        // 따라서 결과가 바뀌었는지 여부로 비용을 면제하지 않습니다.
+        if (newChoices.length === choiceCount) {
           choices = newChoices;
           rerolls--;
           rerollsUsed++;
