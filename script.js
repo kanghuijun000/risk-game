@@ -412,7 +412,11 @@ function samePair(a, b) {
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
-const REDUCE_LOSS_REFERENCE_EXPOSURE = 0.061;
+const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0897, 3: 0.1051 };
+
+function getReduceLossReferenceExposure(choiceCount = 2) {
+  return REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE[choiceCount === 3 ? 3 : 2];
+}
 const FORCED_COLOR_EQUIVALENT_COST = 0.06;
 
 // 3개 모드는 2개 모드보다 선택권을 잃었을 때의 평균 위험조정 기회비용이 약 2배였습니다.
@@ -553,7 +557,7 @@ function getAddedReduceLossTurns(reduceLossTurns, bonusTurns = 5) {
   return Math.max(0, targetTurns - remainingAfterCurrent);
 }
 
-function prepareChoiceForGeneration(choice, reduceLossTurns = 0) {
+function prepareChoiceForGeneration(choice, reduceLossTurns = 0, choiceCount = 2) {
   if (!choice || choice.bonusType !== "reduceLoss") return choice;
   const addedTurns = getAddedReduceLossTurns(
     reduceLossTurns, choice.bonusTurns
@@ -562,7 +566,7 @@ function prepareChoiceForGeneration(choice, reduceLossTurns = 0) {
 
   // 이미 활성화된 턴과 겹치지 않는 추가 턴만큼만 보험료를 부과합니다.
   const cost = Math.round(
-    addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
+    addedTurns * getReduceLossReferenceExposure(choiceCount) *
     (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 10000 +
     Math.abs(TARGET_CHOICE_EV_PERCENT) * 100
   ) / 100;
@@ -875,7 +879,8 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     )
     .map(choice => prepareChoiceForGeneration(
       scaleCashChoice(choice, currentMoney ?? startAmount),
-      reduceLossTurns
+      reduceLossTurns,
+      targetCount
     ))
     .filter(Boolean);
 
