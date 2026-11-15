@@ -69,6 +69,7 @@ test("실측 보너스 가치와 가격: 손실 감소·안전 양수의 모드�
       lossBenefit, lossCost: -preparedLoss.effect, lossNet,
       safeBenefit, safeCost: -preparedSafe.effect, safeNet
     });
+    console.log("BONUS_MODE_AUDIT_ROW=" + JSON.stringify(rows[rows.length - 1]));
     assert.ok(Math.abs(lossNet - api.TARGET_CHOICE_EV_PERCENT) < 0.15,
       `reduce-loss bonus mode ${mode}: net=${lossNet}`);
     assert.ok(Math.abs(safeNet - api.TARGET_CHOICE_EV_PERCENT) < 0.03,
