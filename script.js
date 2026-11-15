@@ -820,7 +820,7 @@ function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, c
       });
       const tiers = new Set(risks.map(item => item.tier));
       const hasRequiredTierMix = targetCount === 2
-        ? tiers.has(0) && tiers.size >= 2
+        ? tiers.size >= 2
         : tiers.has(0) && tiers.has(1) && tiers.has(2);
       combinations.push({
         choices: picked.slice(),
@@ -909,9 +909,9 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       if (!picked.some(choice => !choice.bonusType)) return;
       const tiers = picked.map(choice => riskById.get(choice.id).tier);
       const uniqueTiers = new Set(tiers);
-      if (targetCount === 2 && (
-        !uniqueTiers.has(0) || uniqueTiers.size < 2
-      )) return;
+      // 2개 모드는 저위험을 무조건 끼워 넣지 않고, 저·중 / 저·고 / 중·고
+      // 세 가지 비교 구도를 모두 허용합니다.
+      if (targetCount === 2 && uniqueTiers.size < 2) return;
       if (targetCount === 3 && (
         !uniqueTiers.has(0) || !uniqueTiers.has(1) || !uniqueTiers.has(2)
       )) return;
