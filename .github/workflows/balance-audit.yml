@@ -1,0 +1,23 @@
+name: Balance audit tests
+
+on:
+  push:
+    branches:
+      - main
+      - balance-system-audit
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  balance-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run balance regression tests
+        run: node --test tests/balance-audit.test.js
