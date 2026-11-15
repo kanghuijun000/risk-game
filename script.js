@@ -165,8 +165,8 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeBonus5",
-    effect: -3.6,
-    title: "−3.6%",
+    effect: -6.1,
+    title: "−6.1%",
     penalty: "보너스: 다음 5턴 부분 손실 패널티 확률 20% 감소",
     penaltyChance: 0,
     penaltyType: "none",
@@ -276,9 +276,9 @@ const RISKY_CHOICES = [
   },
   {
     id: "riskMinus15Bonus",
-    effect: -3.6,
-    title: "−3.6%",
-    penalty: "보너스: 다음 5턴 손실 패널티 확률 감소",
+    effect: -6.1,
+    title: "−6.1%",
+    penalty: "보너스: 다음 5턴 부분 손실 패널티 확률 20% 감소",
     penaltyChance: 0,
     penaltyType: "none",
     bonusType: "reduceLoss",
@@ -840,8 +840,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
       ["rare25", "rare50", "rare100", "rare900", "ultra100x"].includes(choice.id)
     );
     // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
-    const rarityWeight = baseRarityWeight *
-      (targetCount === 3 && containsRareJackpot ? 0.65 : 1);
+    const rarityWeight = baseRarityWeight * (
+      containsRareJackpot
+        ? (targetCount === 3 ? 0.30 : 4.5)
+        : 1
+    );
     const riskLevels = item.choices.map(choice =>
       riskById.get(choice.id).tier
     );
