@@ -204,7 +204,14 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
     }
   }
 
-  console.log("\\nSTATEFUL_BALANCE_MONTE_CARLO_JSON=" + JSON.stringify(rows));
+  const chunkSize = 40;
+  for (let start = 0; start < rows.length; start += chunkSize) {
+    const chunkNumber = Math.floor(start / chunkSize) + 1;
+    console.log(
+      `STATEFUL_BALANCE_MONTE_CARLO_JSON_CHUNK_${chunkNumber}=` +
+      JSON.stringify(rows.slice(start, start + chunkSize))
+    );
+  }
   assert.equal(rows.length, stakes.length * modes.length * strategies.length * horizons.length);
   assert.ok(rows.every(row => Number.isFinite(row.meanReturnPct)));
 });
