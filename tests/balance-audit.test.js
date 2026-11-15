@@ -53,6 +53,8 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       generateChoices,
       getChoiceRiskProfile,
       getEffectivePenaltyDetails,
+      formatChancePercent,
+      getChoicePenaltyText,
       getMoneyAfterChoiceEffect,
       getMoneyAfterPenalty,
       scaleCashChoice,
@@ -74,6 +76,26 @@ function loadBalanceEngine(seed = 0x5eed1234) {
 
 
 
+
+
+test("패널티 확률은 한 자리 소수로 표시하고 아주 작은 확률은 0.0%로 숨기지 않는다", () => {
+  const api = loadBalanceEngine();
+  assert.equal(api.formatChancePercent(27.6221), "27.6");
+  assert.equal(api.formatChancePercent(3.56), "3.6");
+  assert.equal(api.formatChancePercent(0.05), "0.1");
+  assert.equal(api.formatChancePercent(0.049), "<0.1");
+  assert.equal(api.formatChancePercent(0), "0.0");
+
+  const legacyChoice = {
+    penaltyType: "loss10",
+    penaltyChance: 0,
+    penalty: "패널티: 27.6221% 확률로 10% 손실"
+  };
+  assert.equal(
+    api.getChoicePenaltyText(legacyChoice, 10000),
+    "패널티: 27.6% 확률로 10% 손실"
+  );
+});
 
 test("초대형 보상에서 양수 오버플로는 파산으로 바뀌지 않고 최대 잔액으로 포화된다", () => {
   const api = loadBalanceEngine(0x76543210);
