@@ -428,8 +428,8 @@ function getReduceLossReferenceExposure(choiceCount = 2) {
 }
 const FORCED_COLOR_EQUIVALENT_COST = 0.0035;
 
-// 3개 모드는 2개 모드보다 선택권을 잃었을 때의 평균 위험조정 기회비용이 약 2배였습니다.
-// 4,000개 조합 표본에서 위험회피 기준(max utility - mean utility)이 약 6.3 대 12.6으로 측정됐습니다.
+// 강제 색상의 기회비용은 현금 손실이 아닌 다음 턴 선택권 제한의 근사치입니다.
+// 2개 모드 0.35%, 3개 모드 0.5425%를 사용하며, 전략에 따라 실제 체감 비용은 달라질 수 있습니다.
 function getForcedColorEquivalentCost(choiceCount = 2) {
   return FORCED_COLOR_EQUIVALENT_COST * (choiceCount === 3 ? 1.55 : 1);
 }
@@ -1974,7 +1974,7 @@ function renderGame() {
 
     item.button.setAttribute(
       "aria-label",
-      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns)}`
+      `${item.label} ${choice.title}. ${getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns, game.choices.length)}`
     );
   });
 
