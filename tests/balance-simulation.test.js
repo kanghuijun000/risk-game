@@ -77,6 +77,13 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
       picked = ranked[Math.floor(api.random() * ranked.length)];
     } else if (strategy === "lowestRisk") {
       picked = ranked.reduce((a, b) => b.profile.riskScore < a.profile.riskScore ? b : a);
+    } else if (strategy === "mediumRisk") {
+      picked = ranked.reduce((a, b) => {
+        const aDistance = Math.abs(a.profile.tier - 1);
+        const bDistance = Math.abs(b.profile.tier - 1);
+        return bDistance < aDistance ||
+          (bDistance === aDistance && b.ev > a.ev) ? b : a;
+      });
     } else if (strategy === "highestReward") {
       picked = ranked.reduce((a, b) => b.gross > a.gross ? b : a);
     } else {
@@ -145,8 +152,8 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { ti
   const api = loadBalanceEngine(0x7a11ce55);
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
-  const strategies = ["random", "lowestRisk", "highestEV", "rerollAware", "stopAfterProfit"];
-  const sessionsPerCell = 200;
+  const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV", "rerollAware", "stopAfterProfit"];
+  const sessionsPerCell = 160;
   const rows = [];
 
   for (const stake of stakes) {
