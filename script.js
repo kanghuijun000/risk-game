@@ -2736,7 +2736,15 @@ $("confirmMoneyButton").addEventListener("click", () => {
 
     resetBankMinute();
   } else {
-    const total = addMoney(state.bankPrincipal, state.bankInterest);
+    const pendingPartialInterest = calculateBankPartialInterest(
+      state.bankPrincipal,
+      state.bankRate,
+      state.bankElapsedMs
+    );
+    const total = addMoney(
+      state.bankPrincipal,
+      addMoney(state.bankInterest, pendingPartialInterest)
+    );
 
     if (amount > total) {
       $("modalError").textContent = "출금 가능 금액보다 많습니다.";
