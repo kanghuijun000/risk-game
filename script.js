@@ -2519,14 +2519,7 @@ $("buyBankRateButton").addEventListener("click", () => {
 
       // 금리 변경 전까지의 시간은 기존 금리로 정산하고, 새 금리는 다음 구간부터 적용합니다.
       syncBankClock(Date.now());
-      if (state.bankPrincipal > 0 && state.bankElapsedMs > 0) {
-        const partialInterest = Math.floor(
-          state.bankPrincipal *
-          (state.bankRate / 100) *
-          (state.bankElapsedMs / BANK_MINUTE_MS)
-        );
-        state.bankInterest = addMoney(state.bankInterest, partialInterest);
-      }
+      settleBankPartialInterest();
       resetBankMinute();
 
       state.budget -= actualCost;
@@ -2567,6 +2560,23 @@ function syncBankClock(now = Date.now()) {
 
     state.bankInterest = addMoney(state.bankInterest, interest);
   }
+}
+
+function calculateBankPartialInterest(principal, rate, elapsedMs) {
+  const safePrincipal = Math.max(0, Number(principal) || 0);
+  const safeRate = Math.max(0, Number(rate) || 0);
+  const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
+  return Math.floor(safePrincipal * (safeRate / 100) * (safeElapsed / BANK_MINUTE_MS));
+}
+
+function settleBankPartialInterest() {
+  if (state.bankPrincipal <= 0 || state.bankElapsedMs <= 0) return;
+  const partialInterest = calculateBankPartialInterest(
+    state.bankPrincipal,
+    state.bankRate,
+    state.bankElapsedMs
+  );
+  state.bankInterest = addMoney(state.bankInterest, partialInterest);
 }
 
 function resetBankMinute() {
@@ -2719,6 +2729,8 @@ $("confirmMoneyButton").addEventListener("click", () => {
       return;
     }
 
+    // 입금 직전까지의 시간은 기존 원금 기준으로 먼저 정산합니다.
+    settleBankPartialInterest();
     state.budget -= amount;
     state.bankPrincipal = addMoney(state.bankPrincipal, amount);
 
@@ -2730,6 +2742,9 @@ $("confirmMoneyButton").addEventListener("click", () => {
       $("modalError").textContent = "출금 가능 금액보다 많습니다.";
       return;
     }
+
+    // 출금 직전까지의 시간은 출금 전 원금 기준으로 먼저 정산합니다.
+    settleBankPartialInterest();
 
     // 누적 이자를 먼저 출금하고, 부족한 부분은 원금에서 차감
     const interestUsed = Math.min(amount, state.bankInterest);
