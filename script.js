@@ -735,7 +735,7 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
   const details = getEffectivePenaltyDetails(
-    choice, hasMoney ? money : null, startAmount, reduceLossTurns
+    choice, hasMoney ? money : null, startAmount, reduceLossTurns, choiceCount
   );
 
   // 위험도는 패널티 확률만이 아니라 기본 효과로 확정되는 손실도 포함합니다.
