@@ -1044,6 +1044,13 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   return selected;
 }
 
+function calculateBankPartialInterest(principal, rate, elapsedMs) {
+  const safePrincipal = Math.max(0, Number(principal) || 0);
+  const safeRate = Math.max(0, Number(rate) || 0);
+  const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
+  return Math.floor(safePrincipal * (safeRate / 100) * (safeElapsed / 60000));
+}
+
 function findChoice(id) {
   return [...SAFE_CHOICES, ...RISKY_CHOICES].find(choice => choice.id === id);
 }
@@ -2560,13 +2567,6 @@ function syncBankClock(now = Date.now()) {
 
     state.bankInterest = addMoney(state.bankInterest, interest);
   }
-}
-
-function calculateBankPartialInterest(principal, rate, elapsedMs) {
-  const safePrincipal = Math.max(0, Number(principal) || 0);
-  const safeRate = Math.max(0, Number(rate) || 0);
-  const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
-  return Math.floor(safePrincipal * (safeRate / 100) * (safeElapsed / BANK_MINUTE_MS));
 }
 
 function settleBankPartialInterest() {
