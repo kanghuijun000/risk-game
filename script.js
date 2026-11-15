@@ -2685,8 +2685,18 @@ function openMoneyModal(mode) {
   } else {
     $("modalTitle").textContent = "출금";
 
+    const pendingPartialInterest = calculateBankAccrual(
+      state.bankPrincipal,
+      state.bankRate,
+      state.bankElapsedMs,
+      state.bankFractionalInterest
+    ).whole;
+    const withdrawableAmount = addMoney(
+      state.bankPrincipal,
+      addMoney(state.bankInterest, pendingPartialInterest)
+    );
     $("modalDescription").textContent =
-      `출금 가능 금액 ${moneyText(addMoney(state.bankPrincipal, state.bankInterest))} · 원하는 금액만큼 출금할 수 있습니다.`;
+      `출금 가능 금액 ${moneyText(withdrawableAmount)} · 원하는 금액만큼 출금할 수 있습니다.`;
 
     $("moneyAmount").min = "1";
   }
