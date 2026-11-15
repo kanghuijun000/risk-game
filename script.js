@@ -729,7 +729,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     const addedTurns = getAddedReduceLossTurns(
       reduceLossTurns, choice.bonusTurns
     );
-    value += addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
+    value += addedTurns * getReduceLossReferenceExposure(choiceCount) *
       (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
   }
   return value;
