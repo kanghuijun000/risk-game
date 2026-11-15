@@ -65,7 +65,7 @@ test("각 실제 금액 패널티 선택지의 확률은 목표 기대손익과 
 
   for (const stake of stakes) {
     for (const raw of [...api.SAFE_CHOICES, ...api.RISKY_CHOICES]) {
-      for (const reduceTurns of [0, 5]) {
+      for (const reduceTurns of [0]) {
         const choice = api.scaleCashChoice(raw, stake);
         if (choice.bonusType) continue;
         const details = api.getEffectivePenaltyDetails(choice, stake, stake, reduceTurns);
@@ -86,6 +86,25 @@ test("각 실제 금액 패널티 선택지의 확률은 목표 기대손익과 
     }
   }
   assert.ok(checked >= 100, `expected broad coverage, checked only ${checked} cases`);
+});
+
+test("손실 감소 보너스는 부분 손실에만 정확히 20% 적용된다", () => {
+  const api = loadBalanceEngine(0x10293847);
+  const choices = [...api.SAFE_CHOICES, ...api.RISKY_CHOICES];
+  for (const stake of [1000, 10000, 100000, 1000000]) {
+    for (const raw of choices) {
+      const choice = api.scaleCashChoice(raw, stake);
+      const base = api.getEffectivePenaltyDetails(choice, stake, stake, 0);
+      const boosted = api.getEffectivePenaltyDetails(choice, stake, stake, 5);
+      if (["loss10", "loss25", "loss50"].includes(base.penaltyType)) {
+        assert.equal(boosted.reductionApplies, true, choice.id);
+        assert.ok(Math.abs(boosted.chance - base.chance * 0.8) <= 0.0001, choice.id);
+      } else {
+        assert.equal(boosted.chance, base.chance, `${choice.id} must not receive partial-loss reduction`);
+        assert.equal(boosted.reductionApplies, false, choice.id);
+      }
+    }
+  }
 });
 
 test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨다", () => {
