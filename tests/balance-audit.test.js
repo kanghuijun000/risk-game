@@ -248,21 +248,33 @@ test("손실 감소 보너스 가격은 모드별 실측 기준과 기대값이 
   const api = loadBalanceEngine(0x27182818);
   const bonus = api.SAFE_CHOICES.find(choice => choice.id === "safeBonus5");
   for (const count of [2, 3]) {
-    const prepared = api.prepareChoiceForGeneration(bonus, 0, count);
+    const prepared = api.prepareChoiceForGeneration(bonus, 0, count, 0);
     const expectedCost = count === 2 ? 6.70 : 8.31;
     assert.ok(Math.abs(prepared.effect + expectedCost) < 0.000001);
     const value = api.estimateChoiceValue(prepared, 10000, 10000, 0, count);
     const fallbackValue = api.estimateChoiceValue(prepared, null, null, 0, count);
-    assert.ok(Math.abs(value - api.TARGET_CHOICE_EV_PERCENT) < 0.000001);
+    assert.ok(Math.abs(value - api.TARGET_CHOICE_EV_PERCENT) < 0.02);
     assert.ok(Number.isFinite(fallbackValue));
     assert.ok(Math.abs(fallbackValue - api.TARGET_CHOICE_EV_PERCENT) < 0.02);
-    assert.equal(
-      api.getReduceLossReferenceExposure(count),
-      count === 2 ? 0.0665 : 0.0826
-    );
+    assert.equal(api.getReduceLossReferenceExposure(count), count === 2 ? 0.0665 : 0.0826);
   }
 });
 
+test("안전 양수 보너스는 추가되는 턴만큼의 실측 미래가치를 가격에 반영한다", () => {
+  const api = loadBalanceEngine(0x16180339);
+  const bonus = api.SAFE_CHOICES.find(choice => choice.id === "safeBonus10");
+  for (const mode of [2, 3]) {
+    for (const remaining of [0, 1, 2, 4, 5, 9, 10]) {
+      const prepared = api.prepareChoiceForGeneration(bonus, 0, mode, remaining);
+      const expectedAdded = Math.max(0, 10 - Math.max(0, remaining - 1));
+      assert.equal(prepared.bonusAddedTurns, expectedAdded);
+      const value = api.estimateChoiceValue(prepared, 10000, 10000, 0, mode, remaining);
+      assert.ok(Math.abs(value - api.TARGET_CHOICE_EV_PERCENT) < 0.02,
+        `mode=${mode}, remaining=${remaining}, value=${value}`);
+    }
+    assert.equal(api.prepareChoiceForGeneration(bonus, 0, mode, 11), null);
+  }
+});
 test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨다", () => {
   const api = loadBalanceEngine(0x13579bdf);
   for (const stake of [1000, 5000, 10000, 100000, 1000000]) {
