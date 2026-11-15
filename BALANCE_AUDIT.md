@@ -1,80 +1,115 @@
-# Risk Game Balance Audit — Baseline
+# Risk Game Balance Audit — Iteration 2
 
-## Scope and safety of this change
+## Scope and safety
 
-This document records the current balance implementation and the verification plan. It does not change gameplay code, player balances, saved games, UI, or Supabase data. All currency in this game is fictional in-game currency.
+All currency is fictional in-game currency. This branch is isolated from `main`; no player balances, saved games, Supabase data, or production deployment have been changed.
 
-Baseline inspected on 2026-11-15:
-- `script.js` blob: `7fb95521e529a8e1b7a0d2adc06b6ac7ca240fa6`
-- `index.html` loads `script.js?v=60`
-- `sw.js` cache: `risk-game-cache-v89`
+Current inspected branch:
+- `script.js` blob: `5652ef1440605624f39fed77a9b2d736c43a8b31`
+- `index.html` loads `script.js?v=63`
+- `sw.js` cache: `risk-game-cache-v92`
+
+## Source corrections already made on this branch
+
+1. Reworked cash-risk probability calculation to use the exact rounded post-effect and post-penalty balances.
+2. Added exact post-effect/post-penalty balance helpers so the EV estimator follows gameplay order: base effect, then penalty, with integer rounding.
+3. Increased probability precision to four decimal places and corrected the displayed-probability replacement pattern.
+4. Preserved the saved cost/title of an active reduce-loss bonus when restoring an in-progress game.
+5. Removed the obsolete duplicate `riskMinus15Bonus` entry from the generated candidate pool.
+6. Excluded negative-percentage options below 1,000 balance, where integer rounding would make their displayed loss inconsistent. The actual game start minimum is 1,000.
+7. Corrected the risk profile to include guaranteed losses from the base effect, not just the penalty. Risk score is now:
+   `expectedLossFraction * 100 + worstCaseLossFraction * 20`.
+   Forced-color penalties use the existing 6% equivalent opportunity-cost estimate.
+8. Adjusted the 3-choice rare-jackpot weight after measuring per-turn appearance rates.
+9. Bumped the script URL and service-worker cache to force clients to receive the new logic.
 
 ## Current choice inventory
 
-The current source defines 9 safe choices and 19 risky choices (28 total before availability filtering).
+The source contains 11 safe-array entries and 23 risky-array entries (34 defined entries). The obsolete duplicate `riskMinus15Bonus` is filtered out of generation, leaving at most 33 source candidates before balance/availability filtering.
 
-Important observations:
-- The smallest positive displayed effect currently in the choice pools is approximately +0.9% (`safeMinus10`, effect 0.86 and title +0.9%). There is no positive +0.1% to +0.8% choice in the current arrays.
-- The current pool contains +25%, +50%, +100% rare choices and a `×100배` choice (effect 9,900%, 0.01 rarity weight, 99% full-loss penalty). It does not currently define a +900% choice.
-- Therefore, the observed +100% ceiling is not the full theoretical ceiling: the ×100 choice exists but is extremely rare. This is a visibility/frequency issue as well as a reward-range issue.
-- Several choices have cash rewards scaled to current game balance. The scaling is recomputed from the current balance each time a new set is generated.
+The current reward range includes:
+- Small positive choices: +0.3% and +0.5%.
+- Medium and large percentage rewards through +100%.
+- A +900% rare reward.
+- A ×100 reward (9,900% effect) with a 99% full-loss penalty.
 
-## Current mathematical rules found in source
+The earlier claim that the smallest positive choice was about +0.9% was incorrect for this current source: +0.3% exists.
 
-- Target estimated expected return per choice: `TARGET_CHOICE_EV_PERCENT = -0.05`.
-- Fixed-cash reference stake: 10,000.
-- Loss-probability reduction bonus factor: 0.8 (20% reduction).
-- Forced-color opportunity-cost approximation: 0.06.
-- Reduce-loss bonus future-exposure estimate: 0.0357.
-- Risk score: `effectiveChance * lossFraction + lossFraction * 20`.
-- Risk tiers: low at score <= 6.5; medium at score <= 20; high above 20.
-- Two-choice generation requires two different risk tiers.
-- Three-choice generation requires one choice from each of the three risk tiers.
-- Candidate combinations are normally constrained to an estimated EV spread <= 1.25 percentage points and best estimated value between -0.75% and +0.25%; if none qualify, the generator progressively relaxes the spread constraint.
-- Combination weights are affected by individual option occurrence counts, risk-tier-combination frequency, bonus presence, zero/no-penalty presence, rarity weights, risk gap, EV score, and the safe-positive bonus boost.
-- The selected choices are shuffled before being mapped to colors. Two-choice mode maps the two positions to blue/red; three-choice mode maps positions to blue/red/green.
+## Verification performed
 
-## Baseline risks requiring investigation
+### Static checks
 
-These are audit findings or hypotheses to test, not yet claims of measured long-run bias.
+- `script.js`: JavaScript parse check passed.
+- `sw.js`: JavaScript parse check passed.
+- `manifest.json`: JSON parse check passed.
+- `index.html`: checked that it loads `script.js?v=63` and references the expected local assets.
+- Confirmed the service-worker cache name is `risk-game-cache-v92`.
 
-1. **Risk-tier thresholds are heuristic.** The score combines expected loss and a fixed tail-loss term, but the constants 20, 6.5, and 20 have no demonstrated calibration against actual outcome distributions. The same score can hide materially different loss shapes.
-2. **Income tier is not enforced.** Generation enforces risk tiers, not low/medium/high expected-income tiers. This can leave medium-risk/medium-income choices underrepresented even if risk tiers are balanced.
-3. **Fallback can violate tier requirements.** If no eligible combination exists, `generateChoices` returns `candidates.slice(0, targetCount)`. Since candidates are ordered as safe choices followed by risky choices, this fallback can return a set that does not satisfy the required tier composition and is not shuffled.
-4. **Expected-value proximity can flatten meaningful trade-offs.** Tight EV-spread filtering may make all choices nearly equal in mean return while leaving variance, skew, ruin probability, and tail loss materially different. This is not necessarily bad, but must be intentional and measured.
-5. **Forced-color cost is an approximation.** The estimator subtracts a fixed equivalent cost, while actual gameplay constrains the next turn's color and changes the player's future choice set. Its true cost depends on next-turn choices and game state.
-6. **Bonus valuation is approximate.** Reduce-loss uses a fixed future exposure estimate; safe-positive changes combination weights rather than adding a directly modeled future reward. Both need stateful simulation.
-7. **Rounding and near-zero balances matter.** Percentage losses use integer rounding and balances <= 1 become zero on a subsequent percentage loss. This can make realized loss differ from the nominal percentage, especially late in long games.
-8. **Rerolls alter the effective choice distribution.** A reroll consumes a limited purchased reroll, keeps current money and forced color, and regenerates the set. It can be used strategically to reject unattractive combinations; it must be included in strategy simulations.
-9. **The color mapping needs conditional tests.** Choices are shuffled, but forced-color effects, two-choice mode, and three-choice mode need separate statistical checks for per-color assignment and availability.
-10. **The wider economy affects bankroll progression.** Current source includes a 10,000-per-hour wage, a bank with 1–10% simple interest per active minute, deposit limits and upgrades, a 5,000 fixed reroll purchase price, reroll-cap upgrades, a 100,000,000 three-choice unlock, and game-limit upgrades. These must be modeled separately from per-game choice EV.
-11. **Bank-rate upgrade timing needs review.** The rate-upgrade handler changes the rate without first synchronizing accrued partial-minute time. An elapsed fraction accrued at the old rate may consequently be paid at the new rate at the next minute boundary. This is a potential timing exploit/bias and needs a deterministic test.
-12. **Stopping is a player decision, not a penalty.** Simulations should report outcomes for different stopping rules, but must not alter odds or apply hidden pressure based on profit or turn count.
+These are source-level checks, not browser or live-site tests.
 
-## Required model dimensions
+### Choice-generation sampling
 
-The eventual test matrix must vary at least:
-- Starting stakes: 1,000; 5,000; 10,000; 100,000; 1,000,000; and balances near rounding boundaries.
-- Turn horizons: 1; 5; 10; 20; 50; 100; plus stop-on-profit and stop-on-loss scenarios.
-- Choice mode: two and three choices.
-- Strategy: random choice; lowest-risk; highest estimated EV; highest nominal reward; risk-adjusted; and reroll-aware strategies.
-- State: no bonus; active reduce-loss bonus; active safe-positive bonus; forced color; different remaining rerolls.
-- Economy: without bank/wage; with wage; bank deposit/withdraw; all bank rates; upgrades; different game limits.
-- Distribution metrics: per-choice and per-tier appearance rate, per-color assignment rate, expected return, variance, quantiles, worst-tail outcomes, probability of ending below starting stake, probability of total loss, and probability of each option being dominated by another available option.
+A seeded deterministic run sampled 10,000 consecutive generated sets per mode at a 10,000 starting balance.
 
-## Verification requirements before any balance change is merged
+Two-choice mode:
+- Every generated set met the required low-risk plus a different risk-tier condition.
+- Tier-pair distribution: low+medium 82.14%; low+high 17.86%.
+- No adjacent repeated choice sets in this sample.
+- Mean estimated value across displayed options: -0.0564% per choice.
+- Blue vs red tier shares:
+  - Blue: low 50.53%, medium 40.85%, high 8.62%.
+  - Red: low 49.47%, medium 41.29%, high 9.24%.
 
-1. Compare every displayed penalty description with the exact probability and effect used by `applyPenalty`.
-2. Derive expected value from the actual order of operations: base effect first, then penalty, integer rounding, then bonus-state updates.
-3. Report confidence intervals for simulation estimates; increase sample size until the confidence interval is narrower than the pre-agreed tolerance.
-4. Test all stake and turn horizons using normalized returns, not only absolute currency.
-5. Test the full choice generator, including fallback paths and weighted appearance frequencies.
-6. Test color assignment independently of option generation.
-7. Include rerolls, bonuses, forced colors, bank, wage, and shop progression in the full-economy model.
-8. Keep the player's ability to stop after profit intact; no adaptive odds based on balance, profit, or turn count.
-9. Preserve the existing UI, account/cloud data, and unrelated game features.
-10. Keep experimental changes on a separate branch and merge only after static checks, deterministic tests, simulation, and browser regression tests pass.
+Three-choice mode:
+- All 10,000 sets contained one low-, one medium-, and one high-risk option.
+- No adjacent repeated choice sets in this sample.
+- Mean estimated value across displayed options: -0.0540% per choice.
+- Color tier shares were close to one-third each:
+  - Blue: 33.40%, 33.30%, 33.30%.
+  - Red: 33.23%, 32.63%, 34.14%.
+  - Green: 33.37%, 34.07%, 32.56%.
 
-## Current status
+Exploratory stake sweep:
+- Stakes tested: 1,000; 5,000; 10,000; 100,000; 1,000,000.
+- 300 generated sets per stake and mode.
+- Every playable stake tested produced the required set length and risk-tier composition.
+- Mean estimated values stayed near the -0.05% target, with observed sample means between approximately -0.059% and -0.053%.
+- A 1-unit, three-choice stress test could not always produce three distinct tiers because integer rounding collapses small losses into full losses. This is outside the game: the actual start minimum is 1,000.
 
-Baseline inspection is complete. Comprehensive simulations, independent expected-value calculations, browser tests, and live Pages verification are not yet complete. No gameplay values have been changed by this audit branch.
+### Risk/income mix
+
+For this diagnostic only, income tiers were classified by gross effect relative to current balance: low <=2%, medium >2% to 10%, high >10%. Cash rewards were converted to a percentage of current balance.
+
+Two-choice option shares by risk tier (rows low/medium/high) and income tier (columns low/medium/high):
+- Low risk: 34.80%, 15.20%, 0%.
+- Medium risk: 2.42%, 23.73%, 14.92%.
+- High risk: 0%, 3.23%, 5.70%.
+
+Three-choice option shares:
+- Low risk: 25.14%, 8.19%, 0%.
+- Medium risk: 2.00%, 19.33%, 12.01%.
+- High risk: 0%, 13.24%, 20.09%.
+
+This confirms that medium-risk/medium-income options are present. The matrix is not fully occupied: high-risk/low-income and low-risk/high-income are absent under the current payoff/EV rules. These cells should not be filled artificially with dominated choices; whether new mechanics are needed remains an open design decision.
+
+## Important unresolved balance findings
+
+1. **Reduce-loss bonus differs sharply by mode.** With five active reduce-loss turns, partial-loss choices gain expected value because their penalty probability is reduced by 20%. In a 3,000-set sample, the three-choice mode's mean displayed-choice EV rose to about +0.425% (from about -0.054% with no active bonus). In two-choice mode the generator strongly preferred low+high pairs whose high-risk option is often a full-loss penalty, which the bonus does not reduce; its mean displayed-choice EV stayed near -0.047%. This suggests the bonus's price and/or choice weighting is not yet calibrated consistently between modes.
+2. **Safe-positive bonus valuation is incomplete.** It changes future generation weights, but its future value is not included as a direct term in `estimateChoiceValue`.
+3. **Risk tiers remain a design model.** The revised score now includes guaranteed downside, but its weights and thresholds still need validation against ruin probability, drawdown, and actual strategy outcomes.
+4. **Reroll strategy and economy interaction remain to be tested.** A reroll costs a fixed 5,000 from budget, consumes one purchased reroll, preserves game balance and forced color, and regenerates the choices. Its opportunity cost depends on the value of the rejected set.
+5. **Long-horizon player strategy simulations are not complete.** The current results are choice-set samples and source-level calculations, not a finished 1/5/10/20/50/100-turn Monte Carlo study.
+6. **Bank rate timing suspicion corrected.** Current source synchronizes elapsed bank time and settles the old-rate partial interval before changing the rate. The earlier suspected old-time/new-rate bug is not present in this branch. Fractional-won rounding and deposit/withdraw timer reset behavior still need explicit deterministic tests.
+7. **No browser regression or live deployment check has been completed.** Supabase, saved-state restoration in a real browser, installed-PWA cache behavior, and Pages deployment remain unverified.
+
+## Merge gate
+
+Do not merge this branch yet. Before merging, complete:
+- Independent outcome simulation against the actual `applyPenalty` order and rounding.
+- Mode-specific reduce-loss and safe-positive bonus valuation.
+- Reroll-aware strategies and full 1/5/10/20/50/100-turn outcome distributions.
+- Bank, wage, shop, and stopping-rule economy tests.
+- Browser regression checks for active-game restore, forced colors, rerolls, and PWA updates.
+- Confirmation that no unrelated UI, account, cloud, or saved data behavior changed.
+
+No odds are adjusted based on player profit, current balance, or turn count.
