@@ -128,9 +128,9 @@ const SAFE_CHOICES = [
     id: "safe15",
     effect: 2.72,
     title: "+2.7%",
-    penalty: "패널티: 45% 확률로 다음 턴 빨강 강제",
-    penaltyChance: 45,
-    penaltyType: "forceRed"
+    penalty: "패널티: 10.8% 확률로 25% 손실",
+    penaltyChance: 10.8,
+    penaltyType: "loss25"
   },
   {
     id: "safe20",
@@ -152,9 +152,9 @@ const SAFE_CHOICES = [
     id: "safeMinus10",
     effect: 0.86,
     title: "+0.9%",
-    penalty: "패널티: 15% 확률로 다음 턴 파랑 강제",
-    penaltyChance: 15,
-    penaltyType: "forceBlue"
+    penalty: "패널티: 9% 확률로 10% 손실",
+    penaltyChance: 9,
+    penaltyType: "loss10"
   },
   {
     id: "safeNoPenalty",
@@ -166,10 +166,10 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeForceGreen",
-    effect: 1.04,
-    title: "+1.0%",
-    penalty: "패널티: 18% 확률로 다음 턴 초록 강제",
-    penaltyChance: 18,
+    effect: 0.1,
+    title: "+0.1%",
+    penalty: "패널티: 43% 확률로 다음 턴 초록 강제",
+    penaltyChance: 43,
     penaltyType: "forceGreen"
   },
   {
@@ -426,12 +426,12 @@ const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0897, 3: 0.1051 };
 function getReduceLossReferenceExposure(choiceCount = 2) {
   return REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE[choiceCount === 3 ? 3 : 2];
 }
-const FORCED_COLOR_EQUIVALENT_COST = 0.06;
+const FORCED_COLOR_EQUIVALENT_COST = 0.0035;
 
 // 3개 모드는 2개 모드보다 선택권을 잃었을 때의 평균 위험조정 기회비용이 약 2배였습니다.
 // 4,000개 조합 표본에서 위험회피 기준(max utility - mean utility)이 약 6.3 대 12.6으로 측정됐습니다.
 function getForcedColorEquivalentCost(choiceCount = 2) {
-  return FORCED_COLOR_EQUIVALENT_COST * (choiceCount === 3 ? 2 : 1);
+  return FORCED_COLOR_EQUIVALENT_COST * (choiceCount === 3 ? 1.55 : 1);
 }
 
 function getCashRewardScale(currentMoney) {
