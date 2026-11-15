@@ -25,9 +25,14 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
   let maxDrawdown = 0;
   let rerolls = 5;
   let rerollsUsed = 0;
+  let predictedEVSum = 0;
+  let predictedEVTurns = 0;
+  let realizedTurnReturnSum = 0;
+  let realizedTurnCount = 0;
 
   const colors = ["blue", "red", "green"];
   while (turns < maxTurns && money > 0 && choices.length) {
+    if (strategy === "stopAfterProfit" && money > stake) break;
     let available = choices
       .map((choice, index) => ({ choice, index, color: colors[index] }))
       .filter(item => !forcedColor || item.color === forcedColor);
@@ -68,7 +73,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     }
 
     let picked;
-    if (strategy === "random") {
+    if (strategy === "random" || strategy === "stopAfterProfit") {
       picked = ranked[Math.floor(api.random() * ranked.length)];
     } else if (strategy === "lowestRisk") {
       picked = ranked.reduce((a, b) => b.profile.riskScore < a.profile.riskScore ? b : a);
@@ -80,11 +85,17 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
 
     const choice = picked.choice;
     const before = money;
+    predictedEVSum += picked.ev;
+    predictedEVTurns++;
     forcedColor = null;
     turns++;
 
     money = api.getMoneyAfterChoiceEffect(choice, money);
-    if (money <= 0) break;
+    if (money <= 0) {
+      realizedTurnReturnSum -= 100;
+      realizedTurnCount++;
+      break;
+    }
 
     const details = api.getEffectivePenaltyDetails(
       choice, before, stake, reduceLossTurns, choiceCount
@@ -98,6 +109,8 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     }
     maxBalance = Math.max(maxBalance, money);
     maxDrawdown = Math.max(maxDrawdown, (maxBalance - money) / Math.max(1, maxBalance));
+    realizedTurnReturnSum += (money / before - 1) * 100;
+    realizedTurnCount++;
     if (money <= 0) break;
 
     if (reduceLossTurns > 0) reduceLossTurns--;
@@ -121,17 +134,19 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     turns,
     ruin: money <= 0,
     returnPct: (money / stake - 1) * 100,
+    averagePredictedEV: predictedEVTurns ? predictedEVSum / predictedEVTurns : 0,
+    averageRealizedTurnReturn: realizedTurnCount ? realizedTurnReturnSum / realizedTurnCount : 0,
     maxDrawdown,
     rerollsUsed
   };
 }
 
-test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { timeout: 600000 }, () => {
+test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { timeout: 1200000 }, () => {
   const api = loadBalanceEngine(0x7a11ce55);
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
-  const strategies = ["random", "lowestRisk", "highestEV", "rerollAware"];
-  const sessionsPerCell = 100;
+  const strategies = ["random", "lowestRisk", "highestEV", "rerollAware", "stopAfterProfit"];
+  const sessionsPerCell = 200;
   const rows = [];
 
   for (const stake of stakes) {
@@ -140,8 +155,7 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { ti
         const results = [];
         for (let i = 0; i < sessionsPerCell; i++) {
           const seed = (
-            0x9e3779b9 + stake * 17 + choiceCount * 100003 +
-            strategies.indexOf(strategy) * 10000019 + i * 7919
+            0x9e3779b9 + stake * 17 + choiceCount * 100003 + i * 7919
           ) >>> 0;
           results.push(simulateSession(api, {
             stake, choiceCount, strategy, maxTurns: 20, seed
@@ -169,6 +183,8 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { ti
           ruinCI95: wilsonInterval(ruinCount, sessionsPerCell).map(v => Number((v * 100).toFixed(1))),
           avgTurns: Number(meanTurns.toFixed(2)),
           avgMaxDrawdownPct: Number((avgDrawdown * 100).toFixed(1)),
+          avgPredictedEV: Number((results.reduce((sum, item) => sum + item.averagePredictedEV, 0) / results.length).toFixed(3)),
+          avgRealizedTurnReturn: Number((results.reduce((sum, item) => sum + item.averageRealizedTurnReturn, 0) / results.length).toFixed(3)),
           avgRerolls: Number((results.reduce((sum, item) => sum + item.rerollsUsed, 0) / results.length).toFixed(2))
         });
       }
