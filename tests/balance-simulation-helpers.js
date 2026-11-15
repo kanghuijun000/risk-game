@@ -5,8 +5,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
-function loadBalanceEngine(seed = 0x5eed1234) {
-  const source = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+function loadBalanceEngine(seed = 0x5eed1234, options = {}) {
+  let source = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+  if (Number.isFinite(options.safeBoostMultiplier)) {
+    source = source.replace("? 1.5 : 1)", `? ${options.safeBoostMultiplier} : 1)`);
+  }
   const arrayStart = source.indexOf("const SAFE_CHOICES =");
   const arrayEnd = source.indexOf("function randomItem(", arrayStart);
   const helperStart = source.indexOf("const CASH_REWARD_REFERENCE_STAKE");
