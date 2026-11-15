@@ -47,7 +47,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       getEffectivePenaltyDetails, getMoneyAfterChoiceEffect, getMoneyAfterPenalty,
       scaleCashChoice, estimateChoiceValue, TARGET_CHOICE_EV_PERCENT,
       getForcedColorEquivalentCost, getReduceLossReferenceExposure,
-      prepareChoiceForGeneration, calculateBankPartialInterest,
+      prepareChoiceForGeneration, calculateBankPartialInterest, calculateBankAccrual,
       random: () => Math.random(), setSeed
     };
   `, context);
