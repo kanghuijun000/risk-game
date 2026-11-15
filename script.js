@@ -375,7 +375,7 @@ const RISKY_CHOICES = [
     penalty: "초희귀 잭팟: 90% 확률로 전액 손실",
     penaltyChance: 90,
     penaltyType: "totalLoss",
-    rarityWeight: 0.002
+    rarityWeight: 0.01
   },
   {
     id: "ultra100x",
@@ -384,7 +384,7 @@ const RISKY_CHOICES = [
     penalty: "초고위험: 99% 확률로 전액 손실",
     penaltyChance: 99,
     penaltyType: "totalLoss",
-    rarityWeight: 0.01
+    rarityWeight: 0.002
   }
 ];
 
