@@ -1,0 +1,30 @@
+name: Balance audit tests
+
+concurrency:
+  group: balance-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  balance-tests:
+    runs-on: ubuntu-latest
+    env:
+      RUN_EXTENDED_BALANCE_SIM: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run balance regression tests
+        run: node --test tests/*.test.js
