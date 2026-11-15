@@ -39,6 +39,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
   let rerolls = 5;
   let rerollsUsed = 0;
   let predictedEVSum = 0;
+  let predictedImmediateEVSum = 0;
   let predictedEVTurns = 0;
   let realizedTurnReturnSum = 0;
   let realizedTurnCount = 0;
@@ -71,17 +72,14 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
         const newChoices = api.generateChoices(
           choices, choiceCount, safePositiveTurns > 0, money, stake, reduceLossTurns
         );
-        // 실제 게임은 메뉴가 동일하게 재생성되더라도 리롤을 소비합니다.
-        // 따라서 결과가 바뀌었는지 여부로 비용을 면제하지 않습니다.
-        if (newChoices.length === choiceCount) {
-          choices = newChoices;
-          rerolls--;
-          rerollsUsed++;
-          available = choices
-            .map((choice, index) => ({ choice, index, color: colors[index] }))
-            .filter(item => !forcedColor || item.color === forcedColor);
-          ranked = available.map(rank);
-        }
+        // 실제 게임은 새 메뉴가 일부 선택지만 반환하더라도 리롤을 소비하고 그 결과로 교체합니다.
+        choices = newChoices;
+        rerolls--;
+        rerollsUsed++;
+        available = choices
+          .map((choice, index) => ({ choice, index, color: colors[index] }))
+          .filter(item => !forcedColor || item.color === forcedColor);
+        ranked = available.map(rank);
       }
     }
 
@@ -106,11 +104,27 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     const choice = picked.choice;
     const before = money;
     predictedEVSum += picked.ev;
+    const immediateDetails = api.getEffectivePenaltyDetails(
+      choice, before, stake, reduceLossTurns, choiceCount
+    );
+    const afterEffectForEV = api.getMoneyAfterChoiceEffect(choice, before);
+    const lossTypes = ["loss10", "loss25", "loss50", "totalLoss"];
+    let afterPenaltyForEV = afterEffectForEV;
+    if (lossTypes.includes(immediateDetails.penaltyType)) {
+      afterPenaltyForEV = api.getMoneyAfterPenalty(afterEffectForEV, immediateDetails.penaltyType);
+    }
+    const immediateChance = immediateDetails.chance / 100;
+    let expectedFinalForEV = afterEffectForEV * (1 - immediateChance) +
+      afterPenaltyForEV * immediateChance;
+    if (["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(immediateDetails.penaltyType)) {
+      expectedFinalForEV *= 1 - immediateChance * api.getForcedColorEquivalentCost(choiceCount);
+    }
+    predictedImmediateEVSum += (expectedFinalForEV / before - 1) * 100;
     predictedEVTurns++;
     forcedColor = null;
     turns++;
 
-    money = api.getMoneyAfterChoiceEffect(choice, money);
+    money = afterEffectForEV;
     if (money <= 0) {
       realizedTurnReturnSum -= 100;
       realizedTurnCount++;
@@ -158,6 +172,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
       ruin: money <= 0,
       returnPct: (money / stake - 1) * 100,
       averagePredictedEV: predictedEVTurns ? predictedEVSum / predictedEVTurns : 0,
+      averagePredictedImmediateEV: predictedEVTurns ? predictedImmediateEVSum / predictedEVTurns : 0,
       averageRealizedTurnReturn: realizedTurnCount ? realizedTurnReturnSum / realizedTurnCount : 0,
       maxDrawdown,
       rerollsUsed
@@ -172,7 +187,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
 }
 
 test("stateful Monte Carlo: 판돈·선택 모드·전략별 1~100턴 결과", {
-  timeout: 1200000,
+  timeout: 2400000,
   skip: process.env.RUN_EXTENDED_BALANCE_SIM !== "1"
 }, () => {
   const api = loadBalanceEngine(0x7a11ce55);
@@ -180,7 +195,7 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 1~100턴 결과", {
   const modes = [2, 3];
   const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV", "rerollAware", "stopAfterProfit"];
   const horizons = [1, 5, 10, 20, 50, 100];
-  const sessionsPerCell = 40;
+  const sessionsPerCell = 160;
   const rows = [];
 
   for (const stake of stakes) {
@@ -223,6 +238,7 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 1~100턴 결과", {
             avgTurns: Number(meanTurns.toFixed(2)),
             avgMaxDrawdownPct: Number((avgDrawdown * 100).toFixed(1)),
             avgPredictedEV: Number((results.reduce((sum, item) => sum + item.averagePredictedEV, 0) / results.length).toFixed(3)),
+            avgPredictedImmediateEV: Number((results.reduce((sum, item) => sum + item.averagePredictedImmediateEV, 0) / results.length).toFixed(3)),
             avgRealizedTurnReturn: Number((results.reduce((sum, item) => sum + item.averageRealizedTurnReturn, 0) / results.length).toFixed(3)),
             avgRerolls: Number((results.reduce((sum, item) => sum + item.rerollsUsed, 0) / results.length).toFixed(2))
           });
