@@ -134,3 +134,75 @@ Do not merge this branch yet. Before merging, complete:
 - Confirmation that no unrelated UI, account, cloud, or saved data behavior changed.
 
 No odds are adjusted based on player profit, current balance, or turn count.
+
+## Iteration 3 — latest branch state (2026-11-15)
+
+Latest code snapshot:
+- Branch: balance-system-audit
+- script.js URL: script.js?v=67
+- Service-worker cache: risk-game-cache-v96
+- Production main remains unchanged; this is still a draft PR.
+
+### Corrections since the earlier snapshot
+
+1. Forced-color opportunity cost is now mode-specific: 6% for two-choice mode and 12% for three-choice mode. The latter reflects the greater loss of choice freedom when one of three colors is forced. The calibration is used consistently by penalty probability, expected-value, and risk-profile calculations.
+2. Risk-tier classification now uses the intrinsic/base penalty chance, while the displayed risk score still reflects the currently active reduce-loss bonus. A temporary bonus therefore reduces actual risk without causing the generator to replace that safer menu with a more dangerous tier mix.
+3. Choice-set expected-value matching uses the no-temporary-bonus baseline. This prevents the generator from counterbalancing an active bonus by silently selecting higher-risk choices.
+4. Bonus-only choice sets are rejected in both the primary combination search and fallback search.
+5. Reduce-loss bonus reference exposure is now mode-specific: 8.97% for two-choice and 10.51% for three-choice. For a five-turn bonus this produces an in-game cost of approximately 9.02% and 10.56%, respectively, including the existing target-EV offset.
+
+### Automated regression checks
+
+Latest GitHub Actions run for the current branch completed successfully:
+- Balance audit tests: **7 passed, 0 failed**.
+- Recovery/source validation: **passed**.
+- The balance tests include exact expected-value vs penalty-outcome checks, 20% partial-loss reduction checks, forced-color mode calibration, bonus price calibration, risk-tier composition, color-position tier-frequency checks, and low-balance generator stress.
+- The color-position sampling test uses 4,000 generated sets per mode and accepts at most a 4-percentage-point difference in any tier's frequency between color positions.
+
+These are automated source-level tests, not a live browser test.
+
+### Additional strategy-conditioned bonus-value sample
+
+A seeded 1,500-choice sample per mode and strategy measured the expected benefit of the active five-turn loss-reduction bonus on the selected ordinary choice. This is a one-turn conditional value estimate multiplied by five for a simple exposure estimate; it is not a full five-turn stateful run.
+
+| Mode | Selection strategy | Mean benefit / turn | Simple five-turn estimate |
+|---|---|---:|---:|
+| 2 choices | Random | 1.2854% | 6.427% |
+| 2 choices | Lowest risk | 0.3844% | 1.922% |
+| 2 choices | Medium risk | 1.7179% | 8.590% |
+| 2 choices | Highest nominal reward | 2.1666% | 10.833% |
+| 3 choices | Random | 1.8119% | 9.060% |
+| 3 choices | Lowest risk | 0.3848% | 1.924% |
+| 3 choices | Medium risk | 1.9818% | 9.909% |
+| 3 choices | Highest nominal reward | 3.4293% | 17.146% |
+
+The current five-turn bonus prices are close to the medium-risk selection estimate in each mode. Conservative play receives less value, while high-risk play can extract more value but also has substantially greater downside. This is a deliberate trade-off, not a guarantee of equal realized outcomes. The simple five-turn estimate ignores compounding, changing balances, and future menu changes, so it must not be treated as a final valuation.
+
+### Preliminary 20-turn session simulation
+
+A separate seeded source-function simulation ran 100 sessions for each mode/strategy pair, starting at 10,000 and stopping at zero or 20 turns. It used the current choice generator, effect and penalty helpers, forced-color restriction, and temporary bonus countdown. It did not yet include reroll purchases, wage, bank, or the full UI settlement path.
+
+| Mode | Strategy | Mean final balance | Median | Ruin rate | Mean turns |
+|---|---|---:|---:|---:|---:|
+| 2 | Random | 10,371 | 8,563 | 22% | 18.14 |
+| 2 | Lowest risk | 11,048 | 10,891 | 1% | 19.97 |
+| 2 | Highest estimated EV | 10,040 | 7,544 | 24% | 18.02 |
+| 2 | Highest nominal reward | 13,414 | 8,619 | 29% | 17.02 |
+| 3 | Random | 9,106 | 0 | 51% | 14.61 |
+| 3 | Lowest risk | 11,310 | 11,112 | 4% | 19.77 |
+| 3 | Highest estimated EV | 9,693 | 3,383 | 44% | 14.10 |
+| 3 | Highest nominal reward | 7,933 | 0 | 87% | 8.94 |
+
+This sample is exploratory only (100 sessions per cell; wide uncertainty). It suggests that three-choice mode has much more severe tail risk under aggressive selection, while a lowest-risk strategy behaves similarly in both modes. It does not justify changing three-choice probabilities yet. Larger runs and a verified stateful strategy harness are required before making a balance change.
+
+### Remaining work / merge gate
+
+- Expand stateful Monte Carlo to 1,000+ sessions per cell, then continue where confidence intervals remain wide.
+- Test 1/5/10/20/50/100 turns and stakes 1,000/5,000/10,000/100,000/1,000,000.
+- Add reroll-aware, stop-after-profit, risk-tier-targeting, and forced-color-aware strategies.
+- Validate red/blue/green realized monetary outcomes, not only tier-position frequencies.
+- Add exact bank/wage/shop economy tests, including fractional-interest behavior at rate-upgrade boundaries.
+- Verify the actual choice execution path, save/restore, rerolls, and settlement against the harness.
+- Run browser/PWA regression checks before considering merge.
+
+**Do not merge or deploy yet.** No change in this branch is live on Pages, and no player balance or Supabase data has been touched.
