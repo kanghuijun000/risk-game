@@ -1,5 +1,9 @@
 name: Balance audit tests
 
+concurrency:
+  group: balance-audit-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
