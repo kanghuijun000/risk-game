@@ -1099,10 +1099,6 @@ function calculateBankPartialInterest(principal, rate, elapsedMs) {
   return calculateBankAccrual(principal, rate, elapsedMs).whole;
 }
 
-function findChoice(id) {
-  return [...SAFE_CHOICES, ...RISKY_CHOICES].find(choice => choice.id === id);
-}
-
 function preserveLegacyForcedColorChoice(normalized, raw) {
   const legacyTypes = {
     safe15: "forceRed",
@@ -1118,6 +1114,10 @@ function preserveLegacyForcedColorChoice(normalized, raw) {
   }
   if (typeof raw.penalty === "string") normalized.penalty = raw.penalty;
   return normalized;
+}
+
+function findChoice(id) {
+  return [...SAFE_CHOICES, ...RISKY_CHOICES].find(choice => choice.id === id);
 }
 
 function normalizeChoice(raw, currentMoney = null) {
