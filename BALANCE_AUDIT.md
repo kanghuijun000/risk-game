@@ -248,3 +248,26 @@ Latest inspected branch snapshot before this iteration:
 - `index.html` script URL and service-worker cache are bumped to `v78` and `risk-game-cache-v107` for the source correction.
 
 The next focused check is the new fast PR run. The latest code is still isolated on the draft PR; no production deployment, Supabase mutation, or player-data change has occurred.
+
+
+## Iteration 5 — forced-color legacy compatibility and stateful simulation (2026-11-16)
+
+This section supersedes earlier statements about the latest Monte Carlo harness and the legacy forced-color behavior.
+
+### Changes in the experimental branch
+
+- The stateful simulator now records 1, 5, 10, 20, 50, and 100-turn checkpoints from the same session trajectory rather than replaying each horizon independently.
+- The simulation's penalty resolver now models `forceRandom` by choosing uniformly among the colors available in the active mode. The previous long-run output did not model this new penalty type and is therefore exploratory only; it must not be used as final balance evidence.
+- `safe15` and `safeMinus10` no longer use a forced-color penalty in newly generated menus. At the current forced-color cost coefficient, those high positive base rewards could not be balanced to the target expected return by a forced-color chance capped at 100%. They now use calibrated partial-loss penalties instead.
+- The former `safeForceGreen` entry is retained with its original +1.04% / 18% green-force definition for active-game save compatibility, but is excluded from newly generated menus. A new `safeForceRandom` entry supplies the calibrated +0.1% / random-color-force option in three-choice mode.
+- Active saved choices from the previous build that use `safe15` + `forceRed`, `safeMinus10` + `forceBlue`, or `safeForceGreen` + `forceGreen` retain their stored penalty probabilities. This prevents the revised forced-color cost model from silently changing a game already in progress.
+- The legacy-compatibility behavior has dedicated regression coverage.
+- Client cache versions are `script.js?v=80` and `risk-game-cache-v109`.
+
+### Evidence and limits
+
+- The prior 100-turn run completed 2,400 sessions (5 stakes × 2 modes × 6 strategies × 40 sessions), and 360 checkpoint rows were emitted. However, because `forceRandom` was not yet represented in the simulation, those long-run outcomes are superseded and are not used to justify any probability changes.
+- The forced-color opportunity-cost diagnostic samples 400 menus per stake/mode/bonus/strategy cell. It compares a random menu position against a strategy's unrestricted pick. It is not a full next-turn forced-color chain simulation, and the measured cost varies substantially with strategy and active loss-reduction bonus. Therefore 0.35% (two-choice) and 0.5425% (three-choice) remain provisional modelling coefficients, not claims of exact empirically measured utility loss.
+- The reroll-aware strategy is still an approximation: it models the five in-game free rerolls but does not simulate every user purchase/shop progression decision. The stateful run excludes bank interest, wages, and shop cash flows; those are covered separately by source-level and pure-helper regression tests.
+- The new corrected stateful run and regression suite must complete successfully before this branch is considered ready for review. A successful syntax/test workflow does not equal browser/PWA validation.
+- The experimental branch remains isolated in draft PR #7. No merge, Pages deployment, Supabase mutation, or player-data modification has been performed.
