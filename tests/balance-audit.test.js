@@ -57,6 +57,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       getReduceLossReferenceExposure,
       prepareChoiceForGeneration,
       calculateBankPartialInterest,
+      calculateBankAccrual,
       random: () => Math.random(),
       setSeed
     };
@@ -73,6 +74,29 @@ test("은행 원금·금리 변경 직전의 부분 분 이자를 이전 조건�
   assert.equal(api.calculateBankPartialInterest(10000, 1, 0), 0);
   assert.equal(api.calculateBankPartialInterest(0, 10, 30000), 0);
   assert.equal(api.calculateBankPartialInterest(10000, 1, -1), 0);
+});
+
+
+test("은행 부분 정산을 여러 번 해도 소수 이자가 누적되어 1분 이자와 일치한다", () => {
+  const api = loadBalanceEngine(0x55667788);
+  const oneMinute = api.calculateBankAccrual(10000, 1, 60000, 0);
+  assert.equal(oneMinute.whole, 100);
+  assert.equal(oneMinute.remainder, 0);
+
+  let total = 0;
+  let remainder = 0;
+  for (let i = 0; i < 60; i++) {
+    const part = api.calculateBankAccrual(10000, 1, 1000, remainder);
+    total += part.whole;
+    remainder = part.remainder;
+  }
+  assert.equal(total, oneMinute.whole);
+  assert.ok(Math.abs(remainder - oneMinute.remainder) < 1e-8);
+
+  const source = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+  assert.ok(source.includes("bankFractionalInterest: 0"));
+  assert.ok(source.includes("raw.bankFractionalInterest"));
+  assert.ok(source.includes("state.bankFractionalInterest = accrual.remainder"));
 });
 
 test("입금·출금·금리 업그레이드 모두 변경 전 부분 이자를 먼저 정산한다", () => {
