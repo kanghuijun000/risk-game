@@ -42,7 +42,7 @@ function validDeviceId(deviceId: unknown): deviceId is string {
     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(deviceId);
 }
 
-async function deviceIsActive(service: ReturnType<typeof createClient>, userId: string, deviceId: unknown) {
+async function deviceIsActive(service: any, userId: string, deviceId: unknown) {
   if (!validDeviceId(deviceId)) return false;
   const { data, error } = await service.from("risk_game_device_sessions")
     .select("device_id").eq("user_id", userId).maybeSingle();
