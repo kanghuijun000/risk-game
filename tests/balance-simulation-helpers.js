@@ -31,10 +31,14 @@ function loadBalanceEngine(seed = 0x5eed1234) {
   vm.runInContext(`
     const moneyFormat = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
     function clampMoney(value) {
-      const n = Number(value);
-      if (!Number.isFinite(n) || n <= 0) return 0;
-      return Math.floor(n);
-    }
+  const n = Number(value);
+  if (Number.isNaN(n) || n <= 0) return 0;
+  // Very large positive rewards (especially the 100x option) must saturate,
+  // not be mistaken for a zero balance when multiplication overflows.
+  if (n === Infinity) return Number.MAX_VALUE;
+  if (!Number.isFinite(n)) return 0;
+  return Math.floor(n);
+}
     function samePair(a, b) {
       if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
       return a.map(x => x && x.id).sort().join("|") ===
@@ -43,7 +47,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
     ${choiceArrays}
     ${balanceHelpers}
     globalThis.balanceApi = {
-      SAFE_CHOICES, RISKY_CHOICES, generateChoices, getChoiceRiskProfile,
+      SAFE_CHOICES, RISKY_CHOICES, clampMoney, generateChoices, getChoiceRiskProfile,
       getEffectivePenaltyDetails, getMoneyAfterChoiceEffect, getMoneyAfterPenalty,
       scaleCashChoice, estimateChoiceValue, TARGET_CHOICE_EV_PERCENT,
       getForcedColorEquivalentCost, getReduceLossReferenceExposure,

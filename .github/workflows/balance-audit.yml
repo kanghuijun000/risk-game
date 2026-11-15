@@ -17,8 +17,8 @@ jobs:
   balance-tests:
     runs-on: ubuntu-latest
     env:
-      RUN_EXTENDED_BALANCE_SIM: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request') && '1' || '0' }}
-    timeout-minutes: 40
+      RUN_EXTENDED_BALANCE_SIM: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4

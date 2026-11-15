@@ -31,10 +31,14 @@ function loadBalanceEngine(seed = 0x5eed1234) {
   vm.runInContext(`
     const moneyFormat = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
     function clampMoney(value) {
-      const n = Number(value);
-      if (!Number.isFinite(n) || n <= 0) return 0;
-      return Math.floor(n);
-    }
+  const n = Number(value);
+  if (Number.isNaN(n) || n <= 0) return 0;
+  // Very large positive rewards (especially the 100x option) must saturate,
+  // not be mistaken for a zero balance when multiplication overflows.
+  if (n === Infinity) return Number.MAX_VALUE;
+  if (!Number.isFinite(n)) return 0;
+  return Math.floor(n);
+}
     function samePair(a, b) {
       if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
       return a.map(x => x && x.id).sort().join("|") ===
@@ -45,6 +49,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
     globalThis.balanceApi = {
       SAFE_CHOICES,
       RISKY_CHOICES,
+      clampMoney,
       generateChoices,
       getChoiceRiskProfile,
       getEffectivePenaltyDetails,
@@ -65,6 +70,23 @@ function loadBalanceEngine(seed = 0x5eed1234) {
   return context.balanceApi;
 }
 
+
+
+
+test("초대형 보상에서 양수 오버플로는 파산으로 바뀌지 않고 최대 잔액으로 포화된다", () => {
+  const api = loadBalanceEngine(0x76543210);
+  assert.equal(api.clampMoney(Infinity), Number.MAX_VALUE);
+  assert.equal(api.clampMoney(-Infinity), 0);
+  assert.equal(api.clampMoney(NaN), 0);
+  assert.equal(
+    api.getMoneyAfterChoiceEffect({ effect: 9900 }, Number.MAX_VALUE / 100),
+    Number.MAX_VALUE
+  );
+  assert.equal(
+    api.getMoneyAfterChoiceEffect({ effect: 9900 }, Number.MAX_VALUE),
+    Number.MAX_VALUE
+  );
+});
 
 test("은행 원금·금리 변경 직전의 부분 분 이자를 이전 조건으로 정산한다", () => {
   const api = loadBalanceEngine(0x10203040);

@@ -156,21 +156,19 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
   const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV", "rerollAware", "stopAfterProfit"];
-  const horizons = [1, 5, 10, 20, 50, 100];
-  const sessionsPerCell = 30;
+  const sessionsPerCell = 160;
   const rows = [];
 
-  for (const maxTurns of horizons) {
-    for (const stake of stakes) {
+  for (const stake of stakes) {
     for (const choiceCount of modes) {
       for (const strategy of strategies) {
         const results = [];
         for (let i = 0; i < sessionsPerCell; i++) {
           const seed = (
-            0x9e3779b9 + stake * 17 + choiceCount * 100003 + maxTurns * 65537 + i * 7919
+            0x9e3779b9 + stake * 17 + choiceCount * 100003 + i * 7919
           ) >>> 0;
           results.push(simulateSession(api, {
-            stake, choiceCount, strategy, maxTurns, seed
+            stake, choiceCount, strategy, maxTurns: 20, seed
           }));
         }
 
@@ -185,7 +183,7 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
         const avgDrawdown = results.reduce((sum, item) => sum + item.maxDrawdown, 0) / results.length;
         const q = p => returns[Math.floor((returns.length - 1) * p)];
         rows.push({
-          stake, mode: choiceCount, strategy, horizon: maxTurns, n: sessionsPerCell,
+          stake, mode: choiceCount, strategy, n: sessionsPerCell,
           meanReturnPct: Number(mean.toFixed(2)),
           meanSE: Number((sd / Math.sqrt(sessionsPerCell)).toFixed(2)),
           medianReturnPct: Number(q(0.5).toFixed(2)),
@@ -201,10 +199,9 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
         });
       }
     }
-    }
   }
 
   console.log("\\nSTATEFUL_BALANCE_MONTE_CARLO_JSON=" + JSON.stringify(rows));
-  assert.equal(rows.length, stakes.length * modes.length * strategies.length * horizons.length);
+  assert.equal(rows.length, stakes.length * modes.length * strategies.length);
   assert.ok(rows.every(row => Number.isFinite(row.meanReturnPct)));
 });

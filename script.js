@@ -38,7 +38,11 @@ const moneyFormat = new Intl.NumberFormat("ko-KR", {
 
 function clampMoney(value) {
   const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return 0;
+  if (Number.isNaN(n) || n <= 0) return 0;
+  // Very large positive rewards (especially the 100x option) must saturate,
+  // not be mistaken for a zero balance when multiplication overflows.
+  if (n === Infinity) return Number.MAX_VALUE;
+  if (!Number.isFinite(n)) return 0;
   return Math.floor(n);
 }
 
