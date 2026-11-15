@@ -24,8 +24,7 @@ function summarizeMenus(api, { stake, mode, reduceLossTurns = 0, safeBoost = fal
     totals.lowestRiskEV += ranked.reduce((a, b) => b.risk.riskScore < a.risk.riskScore ? b : a).ev;
     totals.highRiskShare += ranked.filter(item => item.risk.tier === 2).length / ranked.length;
     totals.safePositiveShare += choices.filter(choice =>
-      api.SAFE_CHOICES.some(safe => safe.id === choice.id) && choice.effect > 0 &&
-      choice.penaltyType === "none"
+      api.SAFE_CHOICES.some(safe => safe.id === choice.id) && choice.effect > 0
     ).length / ranked.length;
   }
   return {
