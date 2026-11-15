@@ -842,7 +842,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
     const rarityWeight = baseRarityWeight * (
       containsRareJackpot
-        ? (targetCount === 3 ? 0.30 : 4.5)
+        ? (targetCount === 3 ? 0.45 : 1.5)
         : 1
     );
     const riskLevels = item.choices.map(choice =>
