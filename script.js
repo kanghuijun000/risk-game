@@ -591,19 +591,37 @@ function getAddedReduceLossTurns(reduceLossTurns, bonusTurns = 5) {
   return Math.max(0, targetTurns - remainingAfterCurrent);
 }
 
-function prepareChoiceForGeneration(choice, reduceLossTurns = 0, choiceCount = 2) {
-  if (!choice || choice.bonusType !== "reduceLoss") return choice;
-  const addedTurns = getAddedReduceLossTurns(
-    reduceLossTurns, choice.bonusTurns
+function getAddedSafePositiveTurns(safePositiveTurns, bonusTurns = 10) {
+  const remainingAfterCurrent = Math.max(
+    0, Math.floor(Number(safePositiveTurns) || 0) - 1
   );
+  const targetTurns = Math.max(0, Math.floor(Number(bonusTurns) || 10));
+  return Math.max(0, targetTurns - remainingAfterCurrent);
+}
+
+function prepareChoiceForGeneration(choice, reduceLossTurns = 0, choiceCount = 2, safePositiveTurns = 0) {
+  if (!choice) return choice;
+
+  let addedTurns = 0;
+  let futureValuePerTurn = 0;
+  if (choice.bonusType === "reduceLoss") {
+    addedTurns = getAddedReduceLossTurns(reduceLossTurns, choice.bonusTurns);
+    futureValuePerTurn = getReduceLossReferenceExposure(choiceCount) *
+      (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
+  } else if (choice.bonusType === "safePositive") {
+    addedTurns = getAddedSafePositiveTurns(safePositiveTurns, choice.bonusTurns);
+    futureValuePerTurn = getSafePositiveReferenceValue(choiceCount);
+  } else {
+    return choice;
+  }
+
   if (addedTurns <= 0) return null;
 
-  // 이미 활성화된 턴과 겹치지 않는 추가 턴만큼만 보험료를 부과합니다.
-  const cost = Math.round(
-    addedTurns * getReduceLossReferenceExposure(choiceCount) *
-    (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 10000 +
-    Math.abs(TARGET_CHOICE_EV_PERCENT) * 100
-  ) / 100;
+  // 추가되는 보너스 턴의 실측 기대값만큼만 비용에 반영해 기본 선택지와 같은 목표 EV를 유지합니다.
+  const cost = Math.round((
+    addedTurns * futureValuePerTurn +
+    Math.abs(TARGET_CHOICE_EV_PERCENT)
+  ) * 100) / 100;
   const costText = cost.toFixed(2).replace(/\.?0+$/, "");
   return {
     ...choice,
@@ -2246,7 +2264,7 @@ $("rerollButton").addEventListener("click", () => {
   game.choices = generateChoices(
     game.choices,
     game.threeChoiceMode ? 3 : 2,
-    game.safePositiveTurns > 0,
+    game.safePositiveTurns,
     game.money,
     game.startAmount,
     game.reduceLossTurns
