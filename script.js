@@ -583,8 +583,8 @@ function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, re
   const reductionApplies =
     isReducibleLossPenalty(penaltyType) && Number(reduceLossTurns) > 0;
   const chance = Math.max(0, Math.min(100, Math.round(
-    baseChance * (reductionApplies ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
-  ) / 10));
+    baseChance * (reductionApplies ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 100
+  ) / 100));
 
   return {
     cashRisk,
@@ -604,16 +604,14 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
     const details = getEffectivePenaltyDetails(
       choice, currentMoney, startAmount, reduceLossTurns
     );
-    const chanceText = Number.isInteger(details.chance)
-      ? String(details.chance)
-      : details.chance.toFixed(1);
+    const chanceText = String(Number(details.chance.toFixed(2)));
     return description.replace(/[\\d.]+% 확률/, chanceText + "% 확률");
   }
 
   const details = getEffectivePenaltyDetails(
     choice, currentMoney, startAmount, reduceLossTurns
   );
-  const chance = details.chance.toFixed(1);
+  const chance = String(Number(details.chance.toFixed(2)));
   if (details.penaltyType === "totalLoss") {
     return `패널티: ${chance}% 확률로 전액 손실`;
   }
@@ -636,7 +634,8 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
     ? clampMoney(Math.round(money + Number(choice.amountEffect || 0)))
     : Math.round(money * baseMultiplier);
   const isPercentLoss = ["loss10", "loss25", "loss50"].includes(choice.penaltyType);
-  if (money <= 1 && choice.effect < 0) return false;
+  // 시작 금액보다 잔액이 작아진 구간에서는 보너스 비용이 정수 반올림으로 0원이 되거나 과도해질 수 있어 제외합니다.
+  if (money < 1000 && choice.effect < 0) return false;
   if (isPercentLoss && choice.penaltyChance > 0 && moneyAfterEffect <= 1) return false;
   return true;
 }
