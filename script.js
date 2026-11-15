@@ -1006,6 +1006,12 @@ function normalizeChoice(raw, currentMoney = null) {
   const known = findChoice(raw.id);
   if (!known) return null;
   const normalized = { ...known };
+  // 손실 감소 보너스는 남은 보너스 턴에 따라 비용이 달라지므로 저장된 실제 비용과 표시를 그대로 복원합니다.
+  if (known.bonusType === "reduceLoss") {
+    const savedEffect = Number(raw.effect);
+    if (Number.isFinite(savedEffect)) normalized.effect = savedEffect;
+    if (typeof raw.title === "string" && raw.title) normalized.title = raw.title;
+  }
   // 새 저장 형식은 이미 잔액에 맞춘 금액을 보존하고, 구버전의 미보정 금액은 현재 잔액 기준으로 한 번만 보정합니다.
   if (known.amountEffect != null) {
     const savedAmount = Number(raw.amountEffect);
