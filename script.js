@@ -586,6 +586,72 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
   return { tier, riskScore, chance: effectiveChance, lossFraction };
 }
 
+function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous) {
+  if (candidates.length <= targetCount) return candidates.slice();
+
+  const combinations = [];
+  function build(startIndex, picked) {
+    if (picked.length === targetCount) {
+      const duplicateDisplay = picked.some((choice, index) =>
+        picked.slice(0, index).some(item =>
+          item.title === choice.title &&
+          (item.penalty || "패널티: 없음") === (choice.penalty || "패널티: 없음")
+        )
+      );
+      if (duplicateDisplay) return;
+
+      const risks = picked.map(choice => riskById.get(choice.id));
+      const values = picked.map(choice => valueById.get(choice.id));
+      const incomeTiers = picked.map(choice => {
+        const gross = choice.amountEffect != null
+          ? Number(choice.amountEffect) / Math.max(1, Number(currentMoney) || 1) * 100
+          : Number(choice.effect) || 0;
+        return gross <= 2 ? 0 : gross <= 10 ? 1 : 2;
+      });
+      combinations.push({
+        choices: picked.slice(),
+        previous: samePair(picked, previous),
+        riskTierCount: new Set(risks.map(item => item.tier)).size,
+        incomeTierCount: new Set(incomeTiers).size,
+        riskSpread: Math.max(...risks.map(item => item.riskScore)) -
+          Math.min(...risks.map(item => item.riskScore)),
+        evSpread: Math.max(...values) - Math.min(...values),
+        averageError: Math.abs(
+          values.reduce((sum, value) => sum + value, 0) / values.length -
+          TARGET_CHOICE_EV_PERCENT
+        )
+      });
+      return;
+    }
+
+    for (let i = startIndex; i < candidates.length; i++) {
+      picked.push(candidates[i]);
+      build(i + 1, picked);
+      picked.pop();
+    }
+  }
+  build(0, []);
+
+  if (!combinations.length) return candidates.slice(0, targetCount);
+  const fresh = combinations.filter(item => !item.previous);
+  const pool = (fresh.length ? fresh : combinations).sort((a, b) =>
+    b.riskTierCount - a.riskTierCount ||
+    b.incomeTierCount - a.incomeTierCount ||
+    b.riskSpread - a.riskSpread ||
+    a.evSpread - b.evSpread ||
+    a.averageError - b.averageError
+  );
+
+  // 정상 조합을 만들 수 없는 극단 잔액에서도 가능한 위험도·소득 다양성을 최대한 보존합니다.
+  const shortlist = pool.slice(0, Math.min(10, pool.length));
+  const selected = shortlist[Math.floor(Math.random() * shortlist.length)].choices.slice();
+  for (let i = selected.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [selected[i], selected[j]] = [selected[j], selected[i]];
+  }
+  return selected;
+}
+
 function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
@@ -646,7 +712,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
-  if (!available.length) return candidates.slice(0, targetCount);
+  if (!available.length) return selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous);
 
   // 기대 손익이 크게 치우친 조합은 우선 제외하되, 선택지의 위험도 차이는 유지합니다.
   let eligible = available.filter(item =>
@@ -688,7 +754,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     );
     // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
     const rarityWeight = baseRarityWeight *
-      (targetCount === 3 && containsRareJackpot ? 0.35 : 1);
+      (targetCount === 3 && containsRareJackpot ? 0.65 : 1);
     const riskLevels = item.choices.map(choice =>
       riskById.get(choice.id).tier
     );
@@ -716,7 +782,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
   if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
-    return candidates.slice(0, targetCount);
+    return selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous);
   }
 
   let roll = Math.random() * totalWeight;
@@ -2219,6 +2285,19 @@ $("buyBankRateButton").addEventListener("click", () => {
       const actualCost = bankRateUpgradeCost();
       if (state.bankRate >= 10) return showPurchaseNotice("최대치 도달");
       if (state.budget < actualCost) return showPurchaseNotice("예산 부족");
+
+      // 금리 변경 전까지의 시간은 기존 금리로 정산하고, 새 금리는 다음 구간부터 적용합니다.
+      syncBankClock(Date.now());
+      if (state.bankPrincipal > 0 && state.bankElapsedMs > 0) {
+        const partialInterest = Math.floor(
+          state.bankPrincipal *
+          (state.bankRate / 100) *
+          (state.bankElapsedMs / BANK_MINUTE_MS)
+        );
+        state.bankInterest = addMoney(state.bankInterest, partialInterest);
+      }
+      resetBankMinute();
+
       state.budget -= actualCost;
       state.bankRate += 1;
       shopMessage("");
