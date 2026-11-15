@@ -726,29 +726,50 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
 }
 
 function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns = 0) {
+  const money = Number(currentMoney);
+  const hasMoney = Number.isFinite(money) && money > 0;
   const details = getEffectivePenaltyDetails(
-    choice, currentMoney, startAmount, reduceLossTurns
-  );
-  const lossFraction = {
-    loss10: 0.10,
-    loss25: 0.25,
-    loss50: 0.50,
-    totalLoss: 1
-  }[details.penaltyType] ?? (
-    ["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)
-      ? FORCED_COLOR_EQUIVALENT_COST
-      : 0
+    choice, hasMoney ? money : null, startAmount, reduceLossTurns
   );
 
-  const expectedLossScore = details.chance * lossFraction;
-  const tailLossScore = lossFraction * 20;
-  const riskScore = expectedLossScore + tailLossScore;
+  // 위험도는 패널티 확률만이 아니라 기본 효과로 확정되는 손실도 포함합니다.
+  // 그래야 패널티가 없는 -10% 선택지가 근거 없이 '저위험'으로 분류되지 않습니다.
+  const baseAfter = hasMoney
+    ? getMoneyAfterChoiceEffect(choice, money)
+    : null;
+  const baseLoss = hasMoney
+    ? Math.max(0, (money - baseAfter) / money)
+    : (choice.effect < 0 ? Math.abs(choice.effect) / 100 : 0);
+  const penaltyAfter = hasMoney
+    ? getMoneyAfterPenalty(baseAfter, details.penaltyType)
+    : null;
+  const penaltyLoss = hasMoney
+    ? Math.max(0, (money - penaltyAfter) / money)
+    : (details.penaltyType === "totalLoss" ? 1 :
+      ({ loss10: 0.10, loss25: 0.25, loss50: 0.50 }[details.penaltyType] || 0));
+  const isForcedColor = [
+    "forceBlue", "forceRed", "forceGreen"
+  ].includes(details.penaltyType);
+  const penaltyOutcomeLoss = isForcedColor
+    ? Math.max(baseLoss, Math.min(1, baseLoss + FORCED_COLOR_EQUIVALENT_COST))
+    : penaltyLoss;
+
+  const chance = details.chance / 100;
+  const expectedLossFraction =
+    baseLoss * (1 - chance) + penaltyOutcomeLoss * chance;
+  const worstCaseLossFraction = Math.max(baseLoss, penaltyOutcomeLoss);
+
+  // 기대 손실(%) + 최악 손실률의 20% 가중치로 위험 점수를 산출합니다.
+  const riskScore =
+    expectedLossFraction * 100 + worstCaseLossFraction * 20;
   const tier = riskScore <= 6.5 ? 0 : riskScore <= 20 ? 1 : 2;
+
   return {
     tier,
     riskScore,
     chance: details.chance,
-    lossFraction,
+    lossFraction: worstCaseLossFraction,
+    expectedLossFraction,
     penaltyType: details.penaltyType,
     reductionApplies: details.reductionApplies
   };
