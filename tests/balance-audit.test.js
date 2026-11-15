@@ -55,11 +55,32 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       TARGET_CHOICE_EV_PERCENT,
       getForcedColorEquivalentCost,
       getReduceLossReferenceExposure,
-      prepareChoiceForGeneration
+      prepareChoiceForGeneration,
+      calculateBankPartialInterest
     };
   `, context);
   return context.balanceApi;
 }
+
+
+test("은행 원금·금리 변경 직전의 부분 분 이자를 이전 조건으로 정산한다", () => {
+  const api = loadBalanceEngine(0x10203040);
+  assert.equal(api.calculateBankPartialInterest(10000, 1, 30000), 50);
+  assert.equal(api.calculateBankPartialInterest(10000, 2, 30000), 100);
+  assert.equal(api.calculateBankPartialInterest(15000, 1, 30000), 75);
+  assert.equal(api.calculateBankPartialInterest(10000, 1, 0), 0);
+  assert.equal(api.calculateBankPartialInterest(0, 10, 30000), 0);
+  assert.equal(api.calculateBankPartialInterest(10000, 1, -1), 0);
+});
+
+test("입금·출금·금리 업그레이드 모두 변경 전 부분 이자를 먼저 정산한다", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+  const deposit = source.slice(source.indexOf('if (moneyModalMode === "deposit")'), source.indexOf('/* =========================\n   시급', source.indexOf('if (moneyModalMode === "deposit")')));
+  const rate = source.slice(source.indexOf('$("buyBankRateButton").addEventListener'), source.indexOf('/* =========================\n   은행', source.indexOf('$("buyBankRateButton").addEventListener')));
+  assert.ok(deposit.indexOf("settleBankPartialInterest();") < deposit.indexOf("state.bankPrincipal = addMoney(state.bankPrincipal, amount)"));
+  assert.ok(deposit.indexOf("settleBankPartialInterest();") < deposit.indexOf("state.bankPrincipal = Math.max("));
+  assert.ok(rate.includes("settleBankPartialInterest();"));
+});
 
 test("각 실제 금액 패널티 선택지의 확률은 목표 기대손익과 일치한다", () => {
   const api = loadBalanceEngine();
