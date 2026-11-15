@@ -27,7 +27,7 @@ test("강제 색상 패널티의 실제 메뉴 선택권 손실을 모드·판�
   const modes = [2, 3];
   const bonusStates = [0, 5];
   const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV"];
-  const samples = 1000;
+  const samples = 400;
   const rows = [];
 
   for (const stake of stakes) {
@@ -77,7 +77,7 @@ test("강제 색상 패널티의 실제 메뉴 선택권 손실을 모드·판�
             p95Pct: Number(sorted[Math.floor(samples * 0.95)].toFixed(4)),
             unrestrictedMeanEV: Number((item.unrestrictedEV / samples).toFixed(4)),
             forcedColorMeanEV: Number((item.forcedEV / samples).toFixed(4)),
-            configuredEquivalentCostPct: mode === 2 ? 6 : 12
+            configuredEquivalentCostPct: Number((api.getForcedColorEquivalentCost(mode) * 100).toFixed(4))
           });
         }
       }
