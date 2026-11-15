@@ -557,7 +557,8 @@ function prepareChoiceForGeneration(choice, reduceLossTurns = 0) {
   // 이미 활성화된 턴과 겹치지 않는 추가 턴만큼만 보험료를 부과합니다.
   const cost = Math.round(
     addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
-    (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 10000
+    (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 10000 +
+    Math.abs(TARGET_CHOICE_EV_PERCENT) * 100
   ) / 100;
   const costText = cost.toFixed(2).replace(/\.?0+$/, "");
   return {
@@ -830,7 +831,10 @@ function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, c
 function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const targetCount = count === 3 ? 3 : 2;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
-    .filter(choice => targetCount === 3 || choice.penaltyType !== "forceGreen")
+    .filter(choice =>
+      choice.id !== "riskMinus15Bonus" &&
+      (targetCount === 3 || choice.penaltyType !== "forceGreen")
+    )
     .map(choice => prepareChoiceForGeneration(
       scaleCashChoice(choice, currentMoney ?? startAmount),
       reduceLossTurns
