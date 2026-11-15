@@ -583,19 +583,27 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
 function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
-  if (hasMoney && money <= 1 && choice.effect < 0) return -100;
-
   const details = getEffectivePenaltyDetails(
     choice, hasMoney ? money : null, startAmount, reduceLossTurns
   );
-  const baseMultiplier = choice.amountEffect != null
-    ? (hasMoney
-        ? clampMoney(Math.round(money + Number(choice.amountEffect || 0))) / money
-        : 1)
-    : (choice.effect < 0
-        ? 1 - Math.abs(choice.effect) / 100
-        : 1 + choice.effect / 100);
-  const chance = details.chance / 100;
+
+  let moneyAfterEffect = null;
+  if (hasMoney) {
+    if (choice.amountEffect != null) {
+      moneyAfterEffect = clampMoney(
+        Math.round(money + Number(choice.amountEffect || 0))
+      );
+    } else if (choice.effect < 0) {
+      moneyAfterEffect = money <= 1
+        ? 0
+        : clampMoney(Math.round(money * (1 - Math.abs(choice.effect) / 100)));
+    } else {
+      moneyAfterEffect = clampMoney(
+        Math.round(money * (1 + Number(choice.effect || 0) / 100))
+      );
+    }
+  }
+
   const lossFraction = {
     loss10: 0.10,
     loss25: 0.25,
@@ -603,29 +611,57 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     totalLoss: 1
   }[details.penaltyType] || 0;
 
-  let penaltyMultiplier = 1;
-  if (lossFraction > 0) {
-    penaltyMultiplier = 1 - chance * lossFraction;
-  } else if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
-    // 색상 강제는 금액 손실이 아니므로 후보 비교에만 제한 비용을 반영합니다.
-    penaltyMultiplier = 1 - chance * FORCED_COLOR_EQUIVALENT_COST;
-  }
+  let expectedFinal;
+  if (hasMoney) {
+    let moneyAfterPenalty = moneyAfterEffect;
+    if (lossFraction > 0) {
+      moneyAfterPenalty = details.penaltyType === "totalLoss" || moneyAfterEffect <= 1
+        ? 0
+        : clampMoney(Math.round(moneyAfterEffect * (1 - lossFraction)));
+    }
 
-  const immediateValue = (baseMultiplier * penaltyMultiplier - 1) * 100;
-  if (choice.bonusType === "reduceLoss") {
-    // 보너스는 이후 턴에 적용되므로, 현재 보유 턴과 겹치지 않는 추가 턴만 평가합니다.
-    const remainingAfterCurrent = Math.max(
-      0, Math.floor(Number(reduceLossTurns) || 0) - 1
+    const chance = details.chance / 100;
+    expectedFinal = moneyAfterEffect * (1 - chance) +
+      moneyAfterPenalty * chance;
+
+    if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
+      // 강제 색상은 실제 현금 차감이 아니므로, 다음 턴 선택권 제한의 위험 환산치만 후보 비교에 반영합니다.
+      expectedFinal *= 1 - chance * FORCED_COLOR_EQUIVALENT_COST;
+    }
+
+    const immediateValue = (expectedFinal / money - 1) * 100;
+    if (choice.bonusType !== "reduceLoss") return immediateValue;
+
+    const addedTurns = getAddedReduceLossTurns(
+      reduceLossTurns, choice.bonusTurns
     );
-    const targetTurns = Math.max(
-      0, Math.floor(Number(choice.bonusTurns) || 5)
-    );
-    const addedTurns = Math.max(0, targetTurns - remainingAfterCurrent);
     const futureValue = addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
       (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
     return immediateValue + futureValue;
   }
-  return immediateValue;
+
+  const baseMultiplier = choice.amountEffect != null
+    ? 1
+    : (choice.effect < 0
+        ? 1 - Math.abs(choice.effect) / 100
+        : 1 + Number(choice.effect || 0) / 100);
+  let penaltyMultiplier = 1;
+  if (lossFraction > 0) {
+    penaltyMultiplier = 1 - (details.chance / 100) * lossFraction;
+  } else if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
+    penaltyMultiplier = 1 -
+      (details.chance / 100) * FORCED_COLOR_EQUIVALENT_COST;
+  }
+  let value = (baseMultiplier * penaltyMultiplier - 1) * 100;
+
+  if (choice.bonusType === "reduceLoss") {
+    const addedTurns = getAddedReduceLossTurns(
+      reduceLossTurns, choice.bonusTurns
+    );
+    value += addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
+      (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
+  }
+  return value;
 }
 
 function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns = 0) {
