@@ -6,7 +6,7 @@ const { loadBalanceEngine } = require("./balance-simulation-helpers");
 
 function summarizeMenus(api, { stake, mode, reduceLossTurns = 0, safeBoost = false, samples = 2500, seed }) {
   api.setSeed(seed);
-  const totals = { meanOptionEV: 0, randomPickEV: 0, bestEV: 0, lowestRiskEV: 0, highRiskShare: 0 };
+  const totals = { meanOptionEV: 0, randomPickEV: 0, bestEV: 0, lowestRiskEV: 0, highRiskShare: 0, safePositiveShare: 0 };
   let optionCount = 0;
   for (let i = 0; i < samples; i++) {
     const choices = api.generateChoices(null, mode, safeBoost, stake, stake, reduceLossTurns);
@@ -23,6 +23,10 @@ function summarizeMenus(api, { stake, mode, reduceLossTurns = 0, safeBoost = fal
     totals.bestEV += Math.max(...ranked.map(item => item.ev));
     totals.lowestRiskEV += ranked.reduce((a, b) => b.risk.riskScore < a.risk.riskScore ? b : a).ev;
     totals.highRiskShare += ranked.filter(item => item.risk.tier === 2).length / ranked.length;
+    totals.safePositiveShare += choices.filter(choice =>
+      api.SAFE_CHOICES.some(safe => safe.id === choice.id) && choice.effect > 0 &&
+      choice.penaltyType === "none"
+    ).length / ranked.length;
   }
   return {
     stake, mode, reduceLossTurns, safeBoost, samples,
@@ -30,7 +34,8 @@ function summarizeMenus(api, { stake, mode, reduceLossTurns = 0, safeBoost = fal
     randomPickEV: totals.randomPickEV / samples,
     bestEV: totals.bestEV / samples,
     lowestRiskEV: totals.lowestRiskEV / samples,
-    highRiskShare: totals.highRiskShare / samples
+    highRiskShare: totals.highRiskShare / samples,
+    safePositiveShare: totals.safePositiveShare / samples
   };
 }
 
@@ -72,6 +77,8 @@ test("실측 보너스 가치와 가격: 손실 감소·안전 양수의 모드�
     console.log("BONUS_MODE_AUDIT_ROW=" + JSON.stringify(rows[rows.length - 1]));
     assert.ok(Math.abs(lossNet - api.TARGET_CHOICE_EV_PERCENT) < 0.15,
       `reduce-loss bonus mode ${mode}: net=${lossNet}`);
+    assert.ok(safeBoost.safePositiveShare > safeBase.safePositiveShare,
+      `safe-positive occurrence must increase in mode ${mode}`);
     assert.ok(Math.abs(safeNet - api.TARGET_CHOICE_EV_PERCENT) < 0.03,
       `safe-positive bonus mode ${mode}: net=${safeNet}`);
     assert.ok(Math.abs(api.estimateChoiceValue(preparedLoss, 10000, 10000, 0, mode) -
