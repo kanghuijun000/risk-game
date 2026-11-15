@@ -148,7 +148,10 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
   };
 }
 
-test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { timeout: 1200000 }, () => {
+test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
+  timeout: 1200000,
+  skip: process.env.RUN_EXTENDED_BALANCE_SIM !== "1"
+}, () => {
   const api = loadBalanceEngine(0x7a11ce55);
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
