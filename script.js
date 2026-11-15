@@ -434,24 +434,49 @@ function isReducibleLossPenalty(penaltyType) {
   return ["loss10", "loss25", "loss50"].includes(penaltyType);
 }
 
+function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
+  const cashRisk = choice.penaltyType === "cashRisk"
+    ? getCashRisk(choice, currentMoney, startAmount)
+    : null;
+  const penaltyType = cashRisk ? cashRisk.penaltyType : choice.penaltyType;
+  const baseChance = cashRisk
+    ? cashRisk.chance
+    : getAdaptivePenaltyChance(choice, currentMoney, startAmount);
+  const reductionApplies =
+    isReducibleLossPenalty(penaltyType) && Number(reduceLossTurns) > 0;
+  const chance = Math.max(0, Math.min(100, Math.round(
+    baseChance * (reductionApplies ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
+  ) / 10));
+
+  return {
+    cashRisk,
+    penaltyType,
+    baseChance,
+    chance,
+    reductionApplies
+  };
+}
+
 function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
     if (!Number(choice.penaltyChance) || !Number.isFinite(Number(startAmount))) {
       return description;
     }
-    const baseChance = getAdaptivePenaltyChance(choice, currentMoney, startAmount);
-    const adjusted = Math.round(
-      baseChance * (isReducibleLossPenalty(choice.penaltyType) && reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
-    ) / 10;
-    const chanceText = Number.isInteger(adjusted) ? String(adjusted) : adjusted.toFixed(1);
-    return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
+    const details = getEffectivePenaltyDetails(
+      choice, currentMoney, startAmount, reduceLossTurns
+    );
+    const chanceText = Number.isInteger(details.chance)
+      ? String(details.chance)
+      : details.chance.toFixed(1);
+    return description.replace(/[\\d.]+% 확률/, chanceText + "% 확률");
   }
 
-  const risk = getCashRisk(choice, currentMoney, startAmount);
-  const adjustedChance = risk.chance * (reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1);
-  const chance = (Math.round(adjustedChance * 10) / 10).toFixed(1);
-  if (risk.penaltyType === "totalLoss") {
+  const details = getEffectivePenaltyDetails(
+    choice, currentMoney, startAmount, reduceLossTurns
+  );
+  const chance = details.chance.toFixed(1);
+  if (details.penaltyType === "totalLoss") {
     return `패널티: ${chance}% 확률로 전액 손실`;
   }
 
@@ -459,7 +484,7 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
     loss10: 10,
     loss25: 25,
     loss50: 50
-  }[risk.penaltyType];
+  }[details.penaltyType];
   return `패널티: ${chance}% 확률로 ${lossPercent}% 손실`;
 }
 
@@ -481,71 +506,43 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
 function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
-
-  if (choice.penaltyType === "cashRisk" && choice.amountEffect != null) {
-    if (!hasMoney) return 0;
-    const moneyAfterEffect = clampMoney(
-      Math.round(money + Number(choice.amountEffect || 0))
-    );
-    const risk = getCashRisk(choice, money, startAmount);
-    const effectiveChance = Math.round(
-      risk.chance * (reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
-    ) / 10;
-    const expectedFinal = moneyAfterEffect * (
-      1 - (effectiveChance / 100) * risk.lossFraction
-    );
-    return (expectedFinal / money - 1) * 100;
-  }
-
   if (hasMoney && money <= 1 && choice.effect < 0) return -100;
-  const baseMultiplier = choice.effect < 0
-    ? 1 - Math.abs(choice.effect) / 100
-    : 1 + choice.effect / 100;
-  const baseChance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount);
-  const chance = Math.round(
-    baseChance * (
-      isReducibleLossPenalty(choice.penaltyType) &&
-      reduceLossTurns > 0
-        ? LOSS_CHANCE_REDUCTION_FACTOR
-        : 1
-    ) * 10
-  ) / 1000;
-  const moneyAfterEffect = hasMoney ? Math.round(money * baseMultiplier) : null;
-  let penaltyMultiplier = 1;
 
-  switch (choice.penaltyType) {
-    case "loss10":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1
-        ? 1 - chance
-        : 1 - chance * 0.10;
-      break;
-    case "loss25":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1
-        ? 1 - chance
-        : 1 - chance * 0.25;
-      break;
-    case "loss50":
-      penaltyMultiplier = moneyAfterEffect !== null && moneyAfterEffect <= 1
-        ? 1 - chance
-        : 1 - chance * 0.50;
-      break;
-    case "totalLoss":
-      penaltyMultiplier = 1 - chance;
-      break;
-    case "forceBlue":
-    case "forceRed":
-    case "forceGreen":
-      // 색상 강제는 직접 금액을 차감하지 않으므로, 후보 기대값 비교에만 선택권 제한의 기준 비용을 반영합니다.
-      penaltyMultiplier = 1 - chance * FORCED_COLOR_EQUIVALENT_COST;
-      break;
+  const details = getEffectivePenaltyDetails(
+    choice, hasMoney ? money : null, startAmount, reduceLossTurns
+  );
+  const baseMultiplier = choice.amountEffect != null
+    ? (hasMoney
+        ? clampMoney(Math.round(money + Number(choice.amountEffect || 0))) / money
+        : 1)
+    : (choice.effect < 0
+        ? 1 - Math.abs(choice.effect) / 100
+        : 1 + choice.effect / 100);
+  const chance = details.chance / 100;
+  const lossFraction = {
+    loss10: 0.10,
+    loss25: 0.25,
+    loss50: 0.50,
+    totalLoss: 1
+  }[details.penaltyType] || 0;
+
+  let penaltyMultiplier = 1;
+  if (lossFraction > 0) {
+    penaltyMultiplier = 1 - chance * lossFraction;
+  } else if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
+    // 색상 강제는 금액 손실이 아니므로 후보 비교에만 제한 비용을 반영합니다.
+    penaltyMultiplier = 1 - chance * FORCED_COLOR_EQUIVALENT_COST;
   }
 
   const immediateValue = (baseMultiplier * penaltyMultiplier - 1) * 100;
   if (choice.bonusType === "reduceLoss") {
-    // 기준 미래가치는 안전 선택지의 평균 손실 노출(3.57%)에 20% 감소율을 적용합니다.
-    // 이미 활성화된 보너스와 겹치는 턴은 추가 가치로 계산하지 않습니다.
-    const remainingAfterCurrent = Math.max(0, Math.floor(Number(reduceLossTurns) || 0) - 1);
-    const targetTurns = Math.max(0, Math.floor(Number(choice.bonusTurns) || 5));
+    // 보너스는 이후 턴에 적용되므로, 현재 보유 턴과 겹치지 않는 추가 턴만 평가합니다.
+    const remainingAfterCurrent = Math.max(
+      0, Math.floor(Number(reduceLossTurns) || 0) - 1
+    );
+    const targetTurns = Math.max(
+      0, Math.floor(Number(choice.bonusTurns) || 5)
+    );
     const addedTurns = Math.max(0, targetTurns - remainingAfterCurrent);
     const futureValue = addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
       (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
@@ -555,40 +552,32 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
 }
 
 function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns = 0) {
-  const cashRisk = choice.penaltyType === "cashRisk"
-    ? getCashRisk(choice, currentMoney, startAmount)
-    : null;
-  const penaltyType = cashRisk ? cashRisk.penaltyType : choice.penaltyType;
+  const details = getEffectivePenaltyDetails(
+    choice, currentMoney, startAmount, reduceLossTurns
+  );
   const lossFraction = {
     loss10: 0.10,
     loss25: 0.25,
     loss50: 0.50,
     totalLoss: 1
-  }[penaltyType] ?? (
-    ["forceBlue", "forceRed", "forceGreen"].includes(penaltyType)
+  }[details.penaltyType] ?? (
+    ["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)
       ? FORCED_COLOR_EQUIVALENT_COST
       : 0
   );
 
-  const isLossPenalty = isReducibleLossPenalty(penaltyType);
-  const baseChance = cashRisk
-    ? cashRisk.chance
-    : getAdaptivePenaltyChance(choice, currentMoney, startAmount);
-  const effectiveChance = baseChance * (
-    isLossPenalty && reduceLossTurns > 0
-      ? LOSS_CHANCE_REDUCTION_FACTOR
-      : 1
-  );
-
-  // 손실 발생 가능성뿐 아니라 한 번 발생했을 때의 최대 손실 규모도 함께 반영합니다.
-  // 따라서 낮은 확률의 전액 손실은 단순한 저위험으로 분류되지 않습니다.
-  const expectedLossScore = effectiveChance * lossFraction;
+  const expectedLossScore = details.chance * lossFraction;
   const tailLossScore = lossFraction * 20;
   const riskScore = expectedLossScore + tailLossScore;
-
-  // 0: 저위험, 1: 중위험, 2: 고위험
   const tier = riskScore <= 6.5 ? 0 : riskScore <= 20 ? 1 : 2;
-  return { tier, riskScore, chance: effectiveChance, lossFraction };
+  return {
+    tier,
+    riskScore,
+    chance: details.chance,
+    lossFraction,
+    penaltyType: details.penaltyType,
+    reductionApplies: details.reductionApplies
+  };
 }
 
 function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous) {
@@ -1732,25 +1721,14 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
   const game = state.activeGame;
   if (!game) return "";
 
-  const cashRisk = choice.penaltyType === "cashRisk"
-    ? getCashRisk(choice, beforeMoney == null ? game.money : beforeMoney, game.startAmount)
-    : null;
-  const effectivePenaltyType = cashRisk
-    ? cashRisk.penaltyType
-    : choice.penaltyType;
-  const isLossPenalty = isReducibleLossPenalty(effectivePenaltyType);
-
-  const adaptiveChance = getAdaptivePenaltyChance(
+  const details = getEffectivePenaltyDetails(
     choice,
     beforeMoney == null ? game.money : beforeMoney,
-    game.startAmount
+    game.startAmount,
+    game.reduceLossTurns
   );
-  const baseEffectiveChance = cashRisk ? cashRisk.chance : adaptiveChance;
-  const effectiveChance = Math.round((
-    isLossPenalty && game.reduceLossTurns > 0
-      ? baseEffectiveChance * LOSS_CHANCE_REDUCTION_FACTOR
-      : baseEffectiveChance
-  ) * 10) / 10;
+  const effectivePenaltyType = details.penaltyType;
+  const effectiveChance = details.chance;
 
   if (Math.random() * 100 >= effectiveChance) {
     return choice.bonusType
