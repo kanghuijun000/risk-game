@@ -52,7 +52,8 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       getMoneyAfterPenalty,
       scaleCashChoice,
       estimateChoiceValue,
-      TARGET_CHOICE_EV_PERCENT
+      TARGET_CHOICE_EV_PERCENT,
+      getForcedColorEquivalentCost
     };
   `, context);
   return context.balanceApi;
@@ -107,6 +108,36 @@ test("손실 감소 보너스는 부분 손실에만 정확히 20% 적용된다"
   }
 });
 
+test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 목표 기대값을 유지한다", () => {
+  const api = loadBalanceEngine(0x31415926);
+  const forced = [...api.SAFE_CHOICES, ...api.RISKY_CHOICES]
+    .filter(choice => ["forceBlue", "forceRed", "forceGreen"].includes(choice.penaltyType));
+  for (const stake of [1000, 10000, 100000, 1000000]) {
+    for (const choice of forced) {
+      for (const count of [2, 3]) {
+        if (count === 2 && choice.penaltyType === "forceGreen") continue;
+        const details = api.getEffectivePenaltyDetails(choice, stake, stake, 0, count);
+        const after = api.getMoneyAfterChoiceEffect(choice, stake);
+        const expectedFinal = after * (
+          1 - details.chance / 100 * api.getForcedColorEquivalentCost(count)
+        );
+        const actualPercent = (expectedFinal / stake - 1) * 100;
+        assert.ok(
+          Math.abs(actualPercent - api.TARGET_CHOICE_EV_PERCENT) <= 0.01,
+          `${choice.id} / ${count} choices: ${actualPercent}%`
+        );
+        const profile = api.getChoiceRiskProfile(choice, stake, stake, 0, count);
+        assert.equal(profile.chance, details.chance, "risk profile and displayed penalty must agree");
+      }
+      if (choice.penaltyType !== "forceGreen") {
+        const two = api.getEffectivePenaltyDetails(choice, stake, stake, 0, 2);
+        const three = api.getEffectivePenaltyDetails(choice, stake, stake, 0, 3);
+        assert.ok(Math.abs(three.chance * 2 - two.chance) <= 0.0002);
+      }
+    }
+  }
+});
+
 test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨다", () => {
   const api = loadBalanceEngine(0x13579bdf);
   for (const stake of [1000, 5000, 10000, 100000, 1000000]) {
@@ -115,7 +146,7 @@ test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨
         const choices = api.generateChoices(null, count, false, stake, stake, i % 6);
         assert.equal(choices.length, count, `${stake} won / ${count} choices returned wrong count`);
         const tiers = choices.map(choice =>
-          api.getChoiceRiskProfile(choice, stake, stake, i % 6).tier
+          api.getChoiceRiskProfile(choice, stake, stake, i % 6, count).tier
         );
         if (count === 2) {
           assert.ok(tiers.includes(0), `2-choice set at ${stake} lacks low risk`);
@@ -138,7 +169,7 @@ test("색상 위치별 위험 등급 출현률에 구조적 편향이 없다", (
     for (let i = 0; i < samples; i++) {
       const choices = api.generateChoices(null, count, false, 10000, 10000, 0);
       choices.forEach((choice, index) => {
-        const tier = api.getChoiceRiskProfile(choice, 10000, 10000, 0).tier;
+        const tier = api.getChoiceRiskProfile(choice, 10000, 10000, 0, count).tier;
         colors[index][tier]++;
       });
     }
