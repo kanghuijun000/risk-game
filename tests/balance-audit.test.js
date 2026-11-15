@@ -217,7 +217,7 @@ test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 
   for (const stake of [1000, 10000, 100000, 1000000]) {
     for (const choice of forced) {
       for (const count of [2, 3]) {
-        if (count === 2 && choice.penaltyType === "forceRandom") continue;
+        if (count === 2 && ["forceGreen", "forceRandom"].includes(choice.penaltyType)) continue;
         const details = api.getEffectivePenaltyDetails(choice, stake, stake, 0, count);
         const after = api.getMoneyAfterChoiceEffect(choice, stake);
         const expectedFinal = after * (
@@ -341,4 +341,17 @@ test("무작위 색상 강제는 3개 모드에서 세 색을 동등하게 선�
   for (const color of Object.keys(counts)) {
     assert.ok(Math.abs(counts[color] / 30000 - 1 / 3) < 0.01, `${color} forced-color share was biased`);
   }
+});
+
+
+test("새 선택지 생성은 무작위 강제 색상만 사용하고 레거시 초록 강제 옵션은 활성 게임 복원용으로만 남긴다", () => {
+  const api = loadBalanceEngine(0x10293847);
+  for (let i = 0; i < 1000; i++) {
+    const two = api.generateChoices(null, 2, false, 10000, 10000, 0);
+    const three = api.generateChoices(null, 3, false, 10000, 10000, 0);
+    assert.ok(!two.some(choice => ["safeForceGreen", "safeForceRandom"].includes(choice.id)));
+    assert.ok(!three.some(choice => choice.id === "safeForceGreen"));
+  }
+  assert.ok(api.SAFE_CHOICES.some(choice => choice.id === "safeForceGreen" && choice.penaltyType === "forceGreen"));
+  assert.ok(api.SAFE_CHOICES.some(choice => choice.id === "safeForceRandom" && choice.penaltyType === "forceRandom"));
 });

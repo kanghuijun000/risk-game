@@ -172,6 +172,14 @@ const SAFE_CHOICES = [
     id: "safeForceGreen",
     effect: 0.1,
     title: "+0.1%",
+    penalty: "패널티: 43% 확률로 다음 턴 초록 강제",
+    penaltyChance: 43,
+    penaltyType: "forceGreen"
+  },
+  {
+    id: "safeForceRandom",
+    effect: 0.1,
+    title: "+0.1%",
     penalty: "패널티: 27.6221% 확률로 다음 턴 무작위 색상 강제",
     penaltyChance: 27.6221,
     penaltyType: "forceRandom"
@@ -896,6 +904,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice =>
       choice.id !== "riskMinus15Bonus" &&
+      choice.id !== "safeForceGreen" &&
       (targetCount === 3 || choice.penaltyType !== "forceRandom")
     )
     .map(choice => prepareChoiceForGeneration(

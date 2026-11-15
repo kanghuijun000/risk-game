@@ -170,7 +170,7 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 1~100턴 결과", {
   const modes = [2, 3];
   const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV", "rerollAware", "stopAfterProfit"];
   const horizons = [1, 5, 10, 20, 50, 100];
-  const sessionsPerCell = 12;
+  const sessionsPerCell = 40;
   const rows = [];
 
   for (const stake of stakes) {
