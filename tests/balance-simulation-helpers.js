@@ -18,10 +18,6 @@ function loadBalanceEngine(seed = 0x5eed1234, options = {}) {
   assert.ok(helperStart >= 0 && helperEnd > helperStart, "balance helpers must exist");
   const choiceArrays = source.slice(arrayStart, arrayEnd);
   const balanceHelpers = source.slice(helperStart, helperEnd);
-  const normalizationStart = source.indexOf("function findChoice(");
-  const normalizationEnd = source.indexOf("/* =========================\n   저장과 복구", normalizationStart);
-  assert.ok(normalizationStart >= 0 && normalizationEnd > normalizationStart, "choice normalization must exist");
-  const choiceNormalization = source.slice(normalizationStart, normalizationEnd);
 
   let randomState = seed >>> 0;
   const seededMath = Object.create(Math);
@@ -53,14 +49,13 @@ function loadBalanceEngine(seed = 0x5eed1234, options = {}) {
     }
     ${choiceArrays}
     ${balanceHelpers}
-    ${choiceNormalization}
     globalThis.balanceApi = {
       SAFE_CHOICES, RISKY_CHOICES, clampMoney, generateChoices, getChoiceRiskProfile,
       getEffectivePenaltyDetails, getMoneyAfterChoiceEffect, getMoneyAfterPenalty,
       scaleCashChoice, estimateChoiceValue, TARGET_CHOICE_EV_PERCENT,
       getForcedColorEquivalentCost, getReduceLossReferenceExposure,
       getSafePositiveReferenceValue, getAddedSafePositiveTurns,
-      prepareChoiceForGeneration, normalizeChoice, calculateBankPartialInterest, calculateBankAccrual,
+      prepareChoiceForGeneration, calculateBankPartialInterest, calculateBankAccrual,
       preserveLegacyForcedColorChoice,
       random: () => Math.random(), chooseForcedColor, setSeed
     };
