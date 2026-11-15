@@ -33,22 +33,30 @@ function summarizeMenus(api, { stake, mode, reduceLossTurns = 0, safeBoost = fal
   };
 }
 
-test("focused bonus valuation audit: active loss-reduction and safe-positive menu effects", { timeout: 180000 }, () => {
-  const api = loadBalanceEngine(0x6a09e667);
+test("safe-positive weight sweep: mode-specific future value by generation strategy", { timeout: 180000 }, () => {
+  const multipliers = [1.5, 3, 5, 8, 12, 20, 35];
   const rows = [];
-  for (const mode of [2, 3]) {
-    const base = summarizeMenus(api, { stake: 10000, mode, samples: 2500, seed: 0x12340000 + mode });
-    const lossBonus = summarizeMenus(api, { stake: 10000, mode, reduceLossTurns: 5, samples: 2500, seed: 0x12340000 + mode });
-    const safeBase = summarizeMenus(api, { stake: 10000, mode, safeBoost: false, samples: 2500, seed: 0x43210000 + mode });
-    const safeBoost = summarizeMenus(api, { stake: 10000, mode, safeBoost: true, samples: 2500, seed: 0x43210000 + mode });
-    rows.push({
-      mode, base, lossBonus,
-      lossBonusLiftRandom: lossBonus.randomPickEV - base.randomPickEV,
-      lossBonusLiftBest: lossBonus.bestEV - base.bestEV,
-      safeBase, safeBoost,
-      safePositiveLiftPerTurnRandom: safeBoost.randomPickEV - safeBase.randomPickEV,
-      safePositiveTenTurnGrossValue: (safeBoost.randomPickEV - safeBase.randomPickEV) * 10
-    });
+  for (const multiplier of multipliers) {
+    const api = loadBalanceEngine(0x6a09e667, { safeBoostMultiplier: multiplier });
+    for (const mode of [2, 3]) {
+      const base = summarizeMenus(api, {
+        stake: 10000, mode, safeBoost: false, samples: 500,
+        seed: 0x43210000 + mode
+      });
+      const boosted = summarizeMenus(api, {
+        stake: 10000, mode, safeBoost: true, samples: 500,
+        seed: 0x43210000 + mode
+      });
+      rows.push({
+        multiplier, mode,
+        randomLift: boosted.randomPickEV - base.randomPickEV,
+        bestStrategyLift: boosted.bestEV - base.bestEV,
+        lowestRiskLift: boosted.lowestRiskEV - base.lowestRiskEV,
+        tenTurnRandomValue: (boosted.randomPickEV - base.randomPickEV) * 10,
+        highRiskShareBase: base.highRiskShare,
+        highRiskShareBoosted: boosted.highRiskShare
+      });
+    }
   }
-  console.log("FOCUSED_BONUS_AUDIT_JSON=" + JSON.stringify(rows));
+  console.log("SAFE_POSITIVE_MULTIPLIER_SWEEP_JSON=" + JSON.stringify(rows));
 });
