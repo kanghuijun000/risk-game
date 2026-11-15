@@ -21,12 +21,13 @@ function chooseByStrategy(ranked, strategy, api) {
   return ranked.reduce((a, b) => b.ev > a.ev ? b : a);
 }
 
-test("강제 색상 패널티의 실제 메뉴 선택권 손실을 모드·판돈·보너스별 측정한다", { timeout: 300000 }, () => {
+test("강제 색상 패널티의 다음 턴 실제 선택권 손실을 모드·판돈·보너스별 측정한다", { timeout: 300000 }, () => {
   const api = loadBalanceEngine(0x71c0ffee);
   const stakes = [10000, 100000];
   const modes = [2, 3];
   const bonusStates = [0, 5];
   const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV"];
+  const colors = ["blue", "red", "green"];
   const samples = 400;
   const rows = [];
 
@@ -39,21 +40,28 @@ test("강제 색상 패널티의 실제 메뉴 선택권 손실을 모드·판�
         api.setSeed((0x13572468 + stake * 19 + mode * 1009 + reduceLossTurns * 65537) >>> 0);
 
         for (let i = 0; i < samples; i++) {
-          const choices = api.generateChoices(
+          const currentChoices = api.generateChoices(
             null, mode, false, stake, stake, reduceLossTurns
           );
-          const ranked = choices.map((choice, index) => ({
+          const nextReduceLossTurns = Math.max(0, reduceLossTurns - 1);
+          const nextChoices = api.generateChoices(
+            currentChoices, mode, false, stake, stake, nextReduceLossTurns
+          );
+          if (nextChoices.length !== mode) throw new Error("next menu has wrong choice count");
+
+          const ranked = nextChoices.map((choice, index) => ({
             choice,
             index,
+            color: colors[index],
             ev: api.estimateChoiceValue(
-              choice, stake, stake, reduceLossTurns, mode
+              choice, stake, stake, nextReduceLossTurns, mode
             ),
             profile: api.getChoiceRiskProfile(
-              choice, stake, stake, reduceLossTurns, mode
+              choice, stake, stake, nextReduceLossTurns, mode
             )
           }));
-          const forcedIndex = Math.floor(api.random() * ranked.length);
-          const forcedPick = ranked[forcedIndex];
+          const forcedColor = api.chooseForcedColor(mode, api.random());
+          const forcedPick = ranked[colors.indexOf(forcedColor)];
 
           for (const strategy of strategies) {
             const unrestrictedPick = chooseByStrategy(ranked, strategy, api);
@@ -84,7 +92,7 @@ test("강제 색상 패널티의 실제 메뉴 선택권 손실을 모드·판�
     }
   }
 
-  console.log("FORCED_COLOR_OPPORTUNITY_COST_JSON=" + JSON.stringify(rows));
+  console.log("FORCED_COLOR_NEXT_TURN_OPPORTUNITY_COST_JSON=" + JSON.stringify(rows));
   assert.equal(rows.length, stakes.length * modes.length * bonusStates.length * strategies.length);
   assert.ok(rows.every(row =>
     Number.isFinite(row.meanOpportunityCostPct) &&
