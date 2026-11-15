@@ -47,6 +47,15 @@ The earlier claim that the smallest positive choice was about +0.9% was incorrec
 
 These are source-level checks, not browser or live-site tests.
 
+### Deterministic outcome checks
+
+Across 340 option/stake/bonus combinations (all defined choices after scaling and availability filtering; stakes 1,000 through 1,000,000; no active bonus and five active bonus turns), deterministic checks compared the estimator with independently calculated weighted outcomes and forced-hit/forced-miss executions of the actual penalty handler:
+- Expected-value formula mismatches: 0.
+- Actual penalty outcome/rounding mismatches: 0.
+- Displayed probability mismatches: 0.
+
+This confirms the current source-level calculation and handler agree for the tested states. It does not prove long-run player-strategy balance.
+
 ### Choice-generation sampling
 
 A seeded deterministic run sampled 10,000 consecutive generated sets per mode at a 10,000 starting balance.
@@ -98,7 +107,7 @@ This confirms that medium-risk/medium-income options are present. The matrix is 
 2. **Safe-positive bonus valuation is incomplete.** It changes future generation weights, but its future value is not included as a direct term in `estimateChoiceValue`.
 3. **Risk tiers remain a design model.** The revised score now includes guaranteed downside, but its weights and thresholds still need validation against ruin probability, drawdown, and actual strategy outcomes.
 4. **Reroll strategy and economy interaction remain to be tested.** A reroll costs a fixed 5,000 from budget, consumes one purchased reroll, preserves game balance and forced color, and regenerates the choices. Its opportunity cost depends on the value of the rejected set.
-5. **Long-horizon player strategy simulations are not complete.** The current results are choice-set samples and source-level calculations, not a finished 1/5/10/20/50/100-turn Monte Carlo study.
+5. **Long-horizon player strategy simulations are not complete.** The current results are choice-set samples and deterministic source-level outcome checks, not a finished 1/5/10/20/50/100-turn Monte Carlo study.
 6. **Bank rate timing suspicion corrected.** Current source synchronizes elapsed bank time and settles the old-rate partial interval before changing the rate. The earlier suspected old-time/new-rate bug is not present in this branch. Fractional-won rounding and deposit/withdraw timer reset behavior still need explicit deterministic tests.
 7. **No browser regression or live deployment check has been completed.** Supabase, saved-state restoration in a real browser, installed-PWA cache behavior, and Pages deployment remain unverified.
 
