@@ -606,13 +606,13 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
       choice, currentMoney, startAmount, reduceLossTurns
     );
     const chanceText = String(Number(details.chance.toFixed(4)));
-    return description.replace(/[\\d.]+% 확률/, chanceText + "% 확률");
+    return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
   }
 
   const details = getEffectivePenaltyDetails(
     choice, currentMoney, startAmount, reduceLossTurns
   );
-  const chance = String(Number(details.chance.toFixed(2)));
+  const chance = String(Number(details.chance.toFixed(4)));
   if (details.penaltyType === "totalLoss") {
     return `패널티: ${chance}% 확률로 전액 손실`;
   }
