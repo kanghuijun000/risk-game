@@ -79,6 +79,8 @@ test("입금·출금·금리 업그레이드 모두 변경 전 부분 이자를 
   const rate = source.slice(source.indexOf('$("buyBankRateButton").addEventListener'), source.indexOf('/* =========================\n   은행', source.indexOf('$("buyBankRateButton").addEventListener')));
   assert.ok(deposit.indexOf("settleBankPartialInterest();") < deposit.indexOf("state.bankPrincipal = addMoney(state.bankPrincipal, amount)"));
   assert.ok(deposit.indexOf("settleBankPartialInterest();") < deposit.indexOf("state.bankPrincipal = Math.max("));
+  assert.ok(deposit.indexOf("pendingPartialInterest") < deposit.indexOf("if (amount > total)"));
+  assert.ok(deposit.indexOf("settleBankPartialInterest();", deposit.indexOf("if (amount > total)")) > deposit.indexOf("if (amount > total)"));
   assert.ok(rate.includes("settleBankPartialInterest();"));
 });
 
