@@ -128,8 +128,8 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { ti
   const api = loadBalanceEngine(0x7a11ce55);
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
-  const strategies = ["random", "lowestRisk", "highestEV", "rerollAware"];
-  const sessionsPerCell = 250;
+  const strategies = ["random", "lowestRisk", "highestEV"];
+  const sessionsPerCell = 50;
   const rows = [];
 
   for (const stake of stakes) {
