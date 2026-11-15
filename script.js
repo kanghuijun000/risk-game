@@ -787,6 +787,7 @@ function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, c
   const combinations = [];
   function build(startIndex, picked) {
     if (picked.length === targetCount) {
+      if (!picked.some(choice => !choice.bonusType)) return;
       const duplicateDisplay = picked.some((choice, index) =>
         picked.slice(0, index).some(item =>
           item.title === choice.title &&
@@ -887,6 +888,8 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const combinations = [];
   function build(startIndex, picked) {
     if (picked.length === targetCount) {
+      // 적어도 하나는 일반 보상 선택지를 남겨 보너스끼리만 구성된 선택 세트를 방지합니다.
+      if (!picked.some(choice => !choice.bonusType)) return;
       const tiers = picked.map(choice => riskById.get(choice.id).tier);
       const uniqueTiers = new Set(tiers);
       if (targetCount === 2 && (
