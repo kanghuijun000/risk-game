@@ -355,3 +355,24 @@ test("새 선택지 생성은 무작위 강제 색상만 사용하고 레거시 
   assert.ok(api.SAFE_CHOICES.some(choice => choice.id === "safeForceGreen" && choice.penaltyType === "forceGreen"));
   assert.ok(api.SAFE_CHOICES.some(choice => choice.id === "safeForceRandom" && choice.penaltyType === "forceRandom"));
 });
+
+
+test("기존 저장 게임의 색상 강제 선택지는 과거 확률과 효과를 보존한다", () => {
+  const api = loadBalanceEngine(0xabc12345);
+  const legacy = [
+    { id: "safe15", effect: 2.72, penaltyChance: 45, penaltyType: "forceRed" },
+    { id: "safeMinus10", effect: 0.86, penaltyChance: 15, penaltyType: "forceBlue" },
+    { id: "safeForceGreen", effect: 1.04, penaltyChance: 18, penaltyType: "forceGreen" }
+  ];
+  const expected = [45, 15, 18];
+  legacy.forEach((choice, index) => {
+    for (const mode of [2, 3]) {
+      const details = api.getEffectivePenaltyDetails(choice, 10000, 10000, 0, mode);
+      assert.equal(details.chance, expected[index], `${choice.id} legacy chance changed in mode ${mode}`);
+    }
+  });
+  const green = api.SAFE_CHOICES.find(choice => choice.id === "safeForceGreen");
+  assert.equal(green.effect, 1.04);
+  assert.equal(green.penaltyChance, 18);
+  assert.equal(green.penaltyType, "forceGreen");
+});

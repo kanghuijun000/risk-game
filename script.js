@@ -170,10 +170,10 @@ const SAFE_CHOICES = [
   },
   {
     id: "safeForceGreen",
-    effect: 0.1,
-    title: "+0.1%",
-    penalty: "패널티: 43% 확률로 다음 턴 초록 강제",
-    penaltyChance: 43,
+    effect: 1.04,
+    title: "+1.0%",
+    penalty: "패널티: 18% 확률로 다음 턴 초록 강제",
+    penaltyChance: 18,
     penaltyType: "forceGreen"
   },
   {
@@ -615,11 +615,17 @@ function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, re
   const fallbackChance = getAdaptivePenaltyChance(
     choice, currentMoney, startAmount
   );
+  const isLegacyForcedColorChoice =
+    (choice.id === "safe15" && penaltyType === "forceRed") ||
+    (choice.id === "safeMinus10" && penaltyType === "forceBlue") ||
+    (choice.id === "safeForceGreen" && penaltyType === "forceGreen");
   const baseChance = cashRisk
     ? cashRisk.chance
-    : getBalancedBasePenaltyChance(
-        choice, penaltyType, currentMoney, fallbackChance, choiceCount
-      );
+    : isLegacyForcedColorChoice
+      ? fallbackChance
+      : getBalancedBasePenaltyChance(
+          choice, penaltyType, currentMoney, fallbackChance, choiceCount
+        );
   const reductionApplies =
     isReducibleLossPenalty(penaltyType) && Number(reduceLossTurns) > 0;
   const chance = Math.max(0, Math.min(100, Math.round(
