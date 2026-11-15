@@ -56,7 +56,9 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       getForcedColorEquivalentCost,
       getReduceLossReferenceExposure,
       prepareChoiceForGeneration,
-      calculateBankPartialInterest
+      calculateBankPartialInterest,
+      random: () => seededMath.random(),
+      setSeed: value => { randomState = value >>> 0; }
     };
   `, context);
   return context.balanceApi;
