@@ -676,7 +676,9 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
     if (!Number(choice.penaltyChance) || !Number.isFinite(Number(startAmount))) {
-      return description;
+      return description.replace(/([\d.]+)% 확률/g, (_, raw) =>
+        formatChancePercent(Number(raw)) + "% 확률"
+      );
     }
     const details = getEffectivePenaltyDetails(
       choice, currentMoney, startAmount, reduceLossTurns, choiceCount
