@@ -23,6 +23,13 @@ test("게임 스크립트의 모든 정적 DOM 참조가 존재하고 HTML ID가
   assert.deepEqual([...new Set(duplicates)], [], "HTML contains duplicate IDs");
 });
 
+test("3개 선택 모드의 접근성 안내도 실제 선택지 수에 맞는 패널티 확률을 사용한다", () => {
+  const ariaStart = script.indexOf('item.button.setAttribute(\n      "aria-label"');
+  const ariaEnd = script.indexOf("\n    );", ariaStart);
+  assert.ok(ariaStart >= 0 && ariaEnd > ariaStart, "choice aria-label must exist");
+  assert.ok(script.slice(ariaStart, ariaEnd).includes("game.choices.length"));
+});
+
 test("서비스 워커의 사전 캐시 파일이 실제 저장소에 모두 존재한다", () => {
   const appFilesBlock = serviceWorker.match(/const APP_FILES = \[([\s\S]*?)\];/);
   assert.ok(appFilesBlock, "APP_FILES list must exist");
