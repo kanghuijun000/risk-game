@@ -19,7 +19,7 @@ function loadBalanceEngine(seed = 0x5eed1234, options = {}) {
   const choiceArrays = source.slice(arrayStart, arrayEnd);
   const balanceHelpers = source.slice(helperStart, helperEnd);
   const normalizationStart = source.indexOf("function findChoice(");
-  const normalizationEnd = source.indexOf("/* =========================\\n   저장과 복구", normalizationStart);
+  const normalizationEnd = source.indexOf("/* =========================\n   저장과 복구", normalizationStart);
   assert.ok(normalizationStart >= 0 && normalizationEnd > normalizationStart, "choice normalization must exist");
   const choiceNormalization = source.slice(normalizationStart, normalizationEnd);
 
