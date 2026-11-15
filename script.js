@@ -665,6 +665,13 @@ function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, re
   };
 }
 
+function formatChancePercent(value) {
+  const chance = Number(value);
+  if (!Number.isFinite(chance)) return "0.0";
+  if (chance > 0 && chance < 0.05) return "<0.1";
+  return (Math.round(chance * 10) / 10).toFixed(1);
+}
+
 function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0, choiceCount = 2) {
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
@@ -674,14 +681,14 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
     const details = getEffectivePenaltyDetails(
       choice, currentMoney, startAmount, reduceLossTurns, choiceCount
     );
-    const chanceText = String(Number(details.chance.toFixed(4)));
+    const chanceText = formatChancePercent(details.chance);
     return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
   }
 
   const details = getEffectivePenaltyDetails(
     choice, currentMoney, startAmount, reduceLossTurns, choiceCount
   );
-  const chance = String(Number(details.chance.toFixed(4)));
+  const chance = formatChancePercent(details.chance);
   if (details.penaltyType === "totalLoss") {
     return `패널티: ${chance}% 확률로 전액 손실`;
   }
