@@ -52,7 +52,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       scaleCashChoice, estimateChoiceValue, TARGET_CHOICE_EV_PERCENT,
       getForcedColorEquivalentCost, getReduceLossReferenceExposure,
       prepareChoiceForGeneration, calculateBankPartialInterest, calculateBankAccrual,
-      random: () => Math.random(), setSeed
+      random: () => Math.random(), chooseForcedColor, setSeed
     };
   `, context);
   return context.balanceApi;

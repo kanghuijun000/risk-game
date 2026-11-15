@@ -36,3 +36,30 @@ test("은행·리롤 한도·3개 선택 모드의 업그레이드 상한과 가
   assert.match(source, /state\.budget < 100000000/);
   assert.match(source, /state\.budget -= 100000000/);
 });
+
+
+test("은행은 원금 기준 단리이며 분당 1~10% 상한과 활성 시간만 계산한다", () => {
+  assert.match(source, /const BANK_MINUTE_MS = 60000;/);
+  assert.match(source, /const INITIAL_BANK_RATE = 1;/);
+  assert.match(source, /bankRate: Math\.max\(\s*1,\s*Math\.min\(10,/);
+  assert.match(source, /function calculateBankAccrual\(principal, rate, elapsedMs, fractionalRemainder = 0\)/);
+  assert.match(source, /safePrincipal \* \(safeRate \/ 100\) \* \(safeElapsed \/ 60000\)/);
+  assert.doesNotMatch(source.slice(source.indexOf("function calculateBankAccrual"), source.indexOf("function calculateBankPartialInterest")), /bankInterest|compound|interest \+=/i);
+  assert.match(source, /document\.visibilityState === "visible" \? Date\.now\(\) : null/);
+  assert.match(source, /if \(document\.visibilityState === "hidden"\)[\s\S]*?lastActiveTick = null;[\s\S]*?saveState\(\)/);
+});
+
+test("은행 한도·금리 업그레이드는 증가량·가격·상한을 일관되게 적용한다", () => {
+  assert.match(source, /function bankRateUpgradeCost\(\) \{\s*return state\.bankRate >= 10 \? 0 : state\.bankRate \* 100000;/);
+  assert.match(source, /function bankDepositLimitUpgrade\(\) \{\s*const increment = 5000;[\s\S]*?cost: state\.bankDepositLimit/);
+  assert.match(source, /state\.bankDepositLimit = current\.nextLimit/);
+  assert.match(source, /state\.bankRate \+= 1/);
+  assert.match(source, /settleBankPartialInterest\(\);\s*resetBankMinute\(\);\s*state\.budget -= actualCost;\s*state\.bankRate \+= 1/);
+});
+
+test("리롤 최대치는 5회씩 증가하고 50회에서 멈추며 3개 선택 모드 해금은 1억 원이다", () => {
+  assert.match(source, /state\.rerollCap >= 50/);
+  assert.match(source, /state\.rerollCap = Math\.min\(50, state\.rerollCap \+ 5\)/);
+  assert.match(source, /state\.budget < 100000000/);
+  assert.match(source, /state\.budget -= 100000000/);
+});

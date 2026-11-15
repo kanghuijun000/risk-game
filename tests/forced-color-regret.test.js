@@ -84,7 +84,7 @@ test("강제 색상 패널티의 실제 메뉴 선택권 손실을 모드·판�
     }
   }
 
-  console.log("\\nFORCED_COLOR_OPPORTUNITY_COST_JSON=" + JSON.stringify(rows));
+  console.log("FORCED_COLOR_OPPORTUNITY_COST_JSON=" + JSON.stringify(rows));
   assert.equal(rows.length, stakes.length * modes.length * bonusStates.length * strategies.length);
   assert.ok(rows.every(row =>
     Number.isFinite(row.meanOpportunityCostPct) &&

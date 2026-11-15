@@ -172,9 +172,9 @@ const SAFE_CHOICES = [
     id: "safeForceGreen",
     effect: 0.1,
     title: "+0.1%",
-    penalty: "패널티: 43% 확률로 다음 턴 초록 강제",
-    penaltyChance: 43,
-    penaltyType: "forceGreen"
+    penalty: "패널티: 27.6221% 확률로 다음 턴 무작위 색상 강제",
+    penaltyChance: 27.6221,
+    penaltyType: "forceRandom"
   },
   {
     id: "safeBonus5",
@@ -438,6 +438,14 @@ function getForcedColorEquivalentCost(choiceCount = 2) {
   return FORCED_COLOR_EQUIVALENT_COST * (choiceCount === 3 ? 1.55 : 1);
 }
 
+function chooseForcedColor(choiceCount = 3, randomValue = Math.random()) {
+  const colors = choiceCount === 3
+    ? ["blue", "red", "green"]
+    : ["blue", "red"];
+  const roll = Math.max(0, Math.min(0.999999999, Number(randomValue) || 0));
+  return colors[Math.floor(roll * colors.length)];
+}
+
 function getCashRewardScale(currentMoney) {
   const money = Number(currentMoney);
   if (!Number.isFinite(money) || money <= 0) return 1;
@@ -547,7 +555,7 @@ function getBalancedBasePenaltyChance(choice, penaltyType, currentMoney, fallbac
       : 0;
   }
 
-  if (["forceBlue", "forceRed", "forceGreen"].includes(penaltyType)) {
+  if (["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(penaltyType)) {
     return Math.max(0, Math.min(
       100,
       (1 - targetFinal / after) / getForcedColorEquivalentCost(choiceCount) * 100
@@ -708,7 +716,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     expectedFinal = moneyAfterEffect * (1 - chance) +
       moneyAfterPenalty * chance;
 
-    if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
+    if (["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(details.penaltyType)) {
       // 강제 색상은 실제 현금 차감이 아니므로, 다음 턴 선택권 제한의 위험 환산치만 후보 비교에 반영합니다.
       expectedFinal *= 1 - chance * getForcedColorEquivalentCost(choiceCount);
     }
@@ -732,7 +740,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
   let penaltyMultiplier = 1;
   if (lossFraction > 0) {
     penaltyMultiplier = 1 - (details.chance / 100) * lossFraction;
-  } else if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
+  } else if (["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(details.penaltyType)) {
     penaltyMultiplier = 1 -
       (details.chance / 100) * getForcedColorEquivalentCost(choiceCount);
   }
@@ -771,7 +779,7 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
     : (details.penaltyType === "totalLoss" ? 1 :
       ({ loss10: 0.10, loss25: 0.25, loss50: 0.50 }[details.penaltyType] || 0));
   const isForcedColor = [
-    "forceBlue", "forceRed", "forceGreen"
+    "forceBlue", "forceRed", "forceGreen", "forceRandom"
   ].includes(details.penaltyType);
   const penaltyOutcomeLoss = isForcedColor
     ? Math.max(baseLoss, Math.min(1, baseLoss + getForcedColorEquivalentCost(choiceCount)))
@@ -888,7 +896,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice =>
       choice.id !== "riskMinus15Bonus" &&
-      (targetCount === 3 || choice.penaltyType !== "forceGreen")
+      (targetCount === 3 || choice.penaltyType !== "forceRandom")
     )
     .map(choice => prepareChoiceForGeneration(
       scaleCashChoice(choice, currentMoney ?? startAmount),
@@ -2059,6 +2067,12 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
       };
 
       return `패널티 발동: 다음 턴은 ${names[game.forcedColor]}만 선택할 수 있습니다.`;
+    }
+
+    case "forceRandom": {
+      game.forcedColor = chooseForcedColor(game.choices.length);
+      const names = { blue: "파랑", red: "빨강", green: "초록" };
+      return `패널티 발동: 다음 턴은 무작위로 정해진 ${names[game.forcedColor]}만 선택할 수 있습니다.`;
     }
 
     case "totalLoss":

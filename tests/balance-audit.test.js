@@ -64,6 +64,7 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       calculateBankPartialInterest,
       calculateBankAccrual,
       random: () => Math.random(),
+      chooseForcedColor,
       setSeed
     };
   `, context);
@@ -210,13 +211,13 @@ test("손실 감소 보너스는 부분 손실에만 정확히 20% 적용된다"
 test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 목표 기대값을 유지한다", () => {
   const api = loadBalanceEngine(0x31415926);
   const forced = [...api.SAFE_CHOICES, ...api.RISKY_CHOICES]
-    .filter(choice => ["forceBlue", "forceRed", "forceGreen"].includes(choice.penaltyType));
+    .filter(choice => ["forceBlue", "forceRed", "forceGreen", "forceRandom"].includes(choice.penaltyType));
   assert.equal(api.getForcedColorEquivalentCost(2), 0.0035);
   assert.ok(Math.abs(api.getForcedColorEquivalentCost(3) - 0.005425) < 1e-10);
   for (const stake of [1000, 10000, 100000, 1000000]) {
     for (const choice of forced) {
       for (const count of [2, 3]) {
-        if (count === 2 && choice.penaltyType === "forceGreen") continue;
+        if (count === 2 && choice.penaltyType === "forceRandom") continue;
         const details = api.getEffectivePenaltyDetails(choice, stake, stake, 0, count);
         const after = api.getMoneyAfterChoiceEffect(choice, stake);
         const expectedFinal = after * (
@@ -230,7 +231,7 @@ test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 
         const profile = api.getChoiceRiskProfile(choice, stake, stake, 0, count);
         assert.equal(profile.chance, details.chance, "risk profile and displayed penalty must agree");
       }
-      if (choice.penaltyType !== "forceGreen") {
+      if (choice.penaltyType !== "forceRandom") {
         const two = api.getEffectivePenaltyDetails(choice, stake, stake, 0, 2);
         const three = api.getEffectivePenaltyDetails(choice, stake, stake, 0, 3);
         assert.ok(Math.abs(three.chance * 1.55 - two.chance) <= 0.001);
@@ -318,5 +319,26 @@ test("극저잔액 예외에서도 생성기가 멈추거나 비정상 값을 �
         }
       }
     }
+  }
+});
+
+
+test("무작위 색상 강제는 3개 모드에서 세 색을 동등하게 선택하고 2개 모드에서는 녹색을 고르지 않는다", () => {
+  const api = loadBalanceEngine(0x55aa33cc);
+  const expected = {
+    2: [["blue", 0.01], ["red", 0.51]],
+    3: [["blue", 0.01], ["red", 0.34], ["green", 0.67]]
+  };
+  for (const [modeText, cases] of Object.entries(expected)) {
+    const mode = Number(modeText);
+    for (const [color, roll] of cases) {
+      assert.equal(api.chooseForcedColor(mode, roll), color);
+    }
+  }
+  const counts = { blue: 0, red: 0, green: 0 };
+  api.setSeed(0x1a2b3c4d);
+  for (let i = 0; i < 30000; i++) counts[api.chooseForcedColor(3, api.random())]++;
+  for (const color of Object.keys(counts)) {
+    assert.ok(Math.abs(counts[color] / 30000 - 1 / 3) < 0.01, `${color} forced-color share was biased`);
   }
 });
