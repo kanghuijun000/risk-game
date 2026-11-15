@@ -20,4 +20,4 @@ jobs:
         with:
           node-version: 20
       - name: Run balance regression tests
-        run: node --test tests/balance-audit.test.js
+        run: node --test tests/*.test.js
