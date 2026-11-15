@@ -151,7 +151,7 @@ const SAFE_CHOICES = [
     id: "safeBonus5",
     effect: -3.6,
     title: "−3.6%",
-    penalty: "보너스: 다음 5턴 손실 패널티 확률 감소",
+    penalty: "보너스: 다음 5턴 부분 손실 패널티 확률 20% 감소",
     penaltyChance: 0,
     penaltyType: "none",
     bonusType: "reduceLoss",
@@ -429,6 +429,11 @@ function getAdaptivePenaltyChance(choice, currentMoney, startAmount = null) {
   return Math.max(0, Math.min(100, Number(choice.penaltyChance) || 0));
 }
 
+function isReducibleLossPenalty(penaltyType) {
+  // 보너스는 부분 손실 패널티에만 적용합니다. 전액 손실 잭팟의 확률은 보존합니다.
+  return ["loss10", "loss25", "loss50"].includes(penaltyType);
+}
+
 function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
@@ -437,7 +442,7 @@ function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLo
     }
     const baseChance = getAdaptivePenaltyChance(choice, currentMoney, startAmount);
     const adjusted = Math.round(
-      baseChance * (["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) && reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
+      baseChance * (isReducibleLossPenalty(choice.penaltyType) && reduceLossTurns > 0 ? LOSS_CHANCE_REDUCTION_FACTOR : 1) * 10
     ) / 10;
     const chanceText = Number.isInteger(adjusted) ? String(adjusted) : adjusted.toFixed(1);
     return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
@@ -565,7 +570,7 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
       : 0
   );
 
-  const isLossPenalty = ["loss10", "loss25", "loss50", "totalLoss"].includes(penaltyType);
+  const isLossPenalty = isReducibleLossPenalty(penaltyType);
   const baseChance = cashRisk
     ? cashRisk.chance
     : getAdaptivePenaltyChance(choice, currentMoney, startAmount);
@@ -1733,12 +1738,7 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
   const effectivePenaltyType = cashRisk
     ? cashRisk.penaltyType
     : choice.penaltyType;
-  const isLossPenalty = [
-    "loss10",
-    "loss25",
-    "loss50",
-    "totalLoss"
-  ].includes(effectivePenaltyType);
+  const isLossPenalty = isReducibleLossPenalty(effectivePenaltyType);
 
   const adaptiveChance = getAdaptivePenaltyChance(
     choice,
