@@ -433,10 +433,15 @@ function samePair(a, b) {
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
-const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0897, 3: 0.1051 };
+const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.06645, 3: 0.0826 };
+const SAFE_POSITIVE_REFERENCE_VALUE_BY_MODE = { 2: 0.00198, 3: 0.00059 };
 
 function getReduceLossReferenceExposure(choiceCount = 2) {
   return REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE[choiceCount === 3 ? 3 : 2];
+}
+
+function getSafePositiveReferenceValue(choiceCount = 2) {
+  return SAFE_POSITIVE_REFERENCE_VALUE_BY_MODE[choiceCount === 3 ? 3 : 2];
 }
 const FORCED_COLOR_EQUIVALENT_COST = 0.0035;
 
@@ -687,7 +692,7 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
   return true;
 }
 
-function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0, choiceCount = 2) {
+function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0, choiceCount = 2, safePositiveTurns = 0) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
   const details = getEffectivePenaltyDetails(
@@ -737,15 +742,23 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     }
 
     const immediateValue = (expectedFinal / money - 1) * 100;
-    if (choice.bonusType !== "reduceLoss") return immediateValue;
-
-    const storedAddedTurns = Number(choice.bonusAddedTurns);
-    const addedTurns = Number.isFinite(storedAddedTurns)
-      ? Math.max(0, storedAddedTurns)
-      : getAddedReduceLossTurns(reduceLossTurns, choice.bonusTurns);
-    const futureValue = addedTurns * getReduceLossReferenceExposure(choiceCount) *
-      (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
-    return immediateValue + futureValue;
+    if (choice.bonusType === "reduceLoss") {
+      const storedAddedTurns = Number(choice.bonusAddedTurns);
+      const addedTurns = Number.isFinite(storedAddedTurns)
+        ? Math.max(0, storedAddedTurns)
+        : getAddedReduceLossTurns(reduceLossTurns, choice.bonusTurns);
+      const futureValue = addedTurns * getReduceLossReferenceExposure(choiceCount) *
+        (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
+      return immediateValue + futureValue;
+    }
+    if (choice.bonusType === "safePositive") {
+      const storedAddedTurns = Number(choice.bonusAddedTurns);
+      const addedTurns = Number.isFinite(storedAddedTurns)
+        ? Math.max(0, storedAddedTurns)
+        : getAddedSafePositiveTurns(safePositiveTurns, choice.bonusTurns);
+      return immediateValue + addedTurns * getSafePositiveReferenceValue(choiceCount);
+    }
+    return immediateValue;
   }
 
   const baseMultiplier = choice.amountEffect != null
@@ -763,11 +776,14 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
   let value = (baseMultiplier * penaltyMultiplier - 1) * 100;
 
   if (choice.bonusType === "reduceLoss") {
-    const addedTurns = getAddedReduceLossTurns(
-      reduceLossTurns, choice.bonusTurns
-    );
+    const addedTurns = getAddedReduceLossTurns(reduceLossTurns, choice.bonusTurns);
     value += addedTurns * getReduceLossReferenceExposure(choiceCount) *
       (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
+  } else if (choice.bonusType === "safePositive") {
+    const addedTurns = Number.isFinite(Number(choice.bonusAddedTurns))
+      ? Math.max(0, Number(choice.bonusAddedTurns))
+      : getAddedSafePositiveTurns(safePositiveTurns, choice.bonusTurns);
+    value += addedTurns * getSafePositiveReferenceValue(choiceCount);
   }
   return value;
 }
@@ -907,8 +923,12 @@ function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, c
   return selected;
 }
 
-function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
+function generateChoices(previous = null, count = 2, safePositiveTurns = 0, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
   const targetCount = count === 3 ? 3 : 2;
+  const activeSafePositiveTurns = typeof safePositiveTurns === "boolean"
+    ? (safePositiveTurns ? 10 : 0)
+    : Math.max(0, Math.floor(Number(safePositiveTurns) || 0));
+  const safeBoost = activeSafePositiveTurns > 0;
   const pool = [...SAFE_CHOICES, ...RISKY_CHOICES]
     .filter(choice =>
       choice.id !== "riskMinus15Bonus" &&
@@ -918,7 +938,8 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     .map(choice => prepareChoiceForGeneration(
       scaleCashChoice(choice, currentMoney ?? startAmount),
       reduceLossTurns,
-      targetCount
+      targetCount,
+      activeSafePositiveTurns
     ))
     .filter(Boolean);
 
@@ -930,7 +951,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
   // 보너스가 실제 손실 확률을 낮춘 뒤 생성기가 더 위험한 메뉴로 보상하지 않도록 분리합니다.
   const valueById = new Map(candidates.map(choice => [
     choice.id,
-    estimateChoiceValue(choice, currentMoney, startAmount, 0, targetCount)
+    estimateChoiceValue(choice, currentMoney, startAmount, 0, targetCount, activeSafePositiveTurns)
   ]));
   const riskById = new Map(candidates.map(choice => [
     choice.id,
@@ -2187,7 +2208,7 @@ function chooseOption(index) {
   game.choices = generateChoices(
     game.choices,
     game.threeChoiceMode ? 3 : 2,
-    game.safePositiveTurns > 0,
+    game.safePositiveTurns,
     game.money,
     game.startAmount,
     game.reduceLossTurns
