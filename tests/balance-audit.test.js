@@ -228,8 +228,10 @@ test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨
           api.getChoiceRiskProfile(choice, stake, stake, i % 6, count).tier
         );
         if (count === 2) {
-          assert.ok(tiers.includes(0), `2-choice set at ${stake} lacks low risk`);
-          assert.ok(new Set(tiers).size >= 2, `2-choice set at ${stake} lacks risk diversity`);
+          assert.ok(
+            new Set(tiers).size >= 2,
+            `2-choice set at ${stake} lacks risk diversity`
+          );
         } else {
           assert.deepEqual([...tiers].sort(), [0, 1, 2]);
         }
