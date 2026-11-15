@@ -415,6 +415,12 @@ const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
 const REDUCE_LOSS_REFERENCE_EXPOSURE = 0.061;
 const FORCED_COLOR_EQUIVALENT_COST = 0.06;
 
+// 3개 모드는 2개 모드보다 선택권을 잃었을 때의 평균 위험조정 기회비용이 약 2배였습니다.
+// 4,000개 조합 표본에서 위험회피 기준(max utility - mean utility)이 약 6.3 대 12.6으로 측정됐습니다.
+function getForcedColorEquivalentCost(choiceCount = 2) {
+  return FORCED_COLOR_EQUIVALENT_COST * (choiceCount === 3 ? 2 : 1);
+}
+
 function getCashRewardScale(currentMoney) {
   const money = Number(currentMoney);
   if (!Number.isFinite(money) || money <= 0) return 1;
@@ -508,7 +514,7 @@ function getMoneyAfterPenalty(money, penaltyType) {
   return clampMoney(Math.round(money * (1 - lossFraction)));
 }
 
-function getBalancedBasePenaltyChance(choice, penaltyType, currentMoney, fallbackChance) {
+function getBalancedBasePenaltyChance(choice, penaltyType, currentMoney, fallbackChance, choiceCount = 2) {
   const money = Number(currentMoney);
   if (!Number.isFinite(money) || money <= 0) return fallbackChance;
 
@@ -527,7 +533,7 @@ function getBalancedBasePenaltyChance(choice, penaltyType, currentMoney, fallbac
   if (["forceBlue", "forceRed", "forceGreen"].includes(penaltyType)) {
     return Math.max(0, Math.min(
       100,
-      (1 - targetFinal / after) / FORCED_COLOR_EQUIVALENT_COST * 100
+      (1 - targetFinal / after) / getForcedColorEquivalentCost(choiceCount) * 100
     ));
   }
 
@@ -568,7 +574,7 @@ function prepareChoiceForGeneration(choice, reduceLossTurns = 0) {
   };
 }
 
-function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
+function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, reduceLossTurns = 0, choiceCount = 2) {
   const cashRisk = choice.penaltyType === "cashRisk"
     ? getCashRisk(choice, currentMoney, startAmount)
     : null;
@@ -579,7 +585,7 @@ function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, re
   const baseChance = cashRisk
     ? cashRisk.chance
     : getBalancedBasePenaltyChance(
-        choice, penaltyType, currentMoney, fallbackChance
+        choice, penaltyType, currentMoney, fallbackChance, choiceCount
       );
   const reductionApplies =
     isReducibleLossPenalty(penaltyType) && Number(reduceLossTurns) > 0;
@@ -596,21 +602,21 @@ function getEffectivePenaltyDetails(choice, currentMoney, startAmount = null, re
   };
 }
 
-function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0) {
+function getChoicePenaltyText(choice, currentMoney, startAmount = null, reduceLossTurns = 0, choiceCount = 2) {
   if (choice.penaltyType !== "cashRisk") {
     const description = choice.penalty || "패널티: 없음";
     if (!Number(choice.penaltyChance) || !Number.isFinite(Number(startAmount))) {
       return description;
     }
     const details = getEffectivePenaltyDetails(
-      choice, currentMoney, startAmount, reduceLossTurns
+      choice, currentMoney, startAmount, reduceLossTurns, choiceCount
     );
     const chanceText = String(Number(details.chance.toFixed(4)));
     return description.replace(/[\d.]+% 확률/, chanceText + "% 확률");
   }
 
   const details = getEffectivePenaltyDetails(
-    choice, currentMoney, startAmount, reduceLossTurns
+    choice, currentMoney, startAmount, reduceLossTurns, choiceCount
   );
   const chance = String(Number(details.chance.toFixed(4)));
   if (details.penaltyType === "totalLoss") {
@@ -641,11 +647,11 @@ function isChoiceAvailableAtMoney(choice, currentMoney) {
   return true;
 }
 
-function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
+function estimateChoiceValue(choice, currentMoney = null, startAmount = null, reduceLossTurns = 0, choiceCount = 2) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
   const details = getEffectivePenaltyDetails(
-    choice, hasMoney ? money : null, startAmount, reduceLossTurns
+    choice, hasMoney ? money : null, startAmount, reduceLossTurns, choiceCount
   );
 
   let moneyAfterEffect = null;
@@ -687,7 +693,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
 
     if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
       // 강제 색상은 실제 현금 차감이 아니므로, 다음 턴 선택권 제한의 위험 환산치만 후보 비교에 반영합니다.
-      expectedFinal *= 1 - chance * FORCED_COLOR_EQUIVALENT_COST;
+      expectedFinal *= 1 - chance * getForcedColorEquivalentCost(choiceCount);
     }
 
     const immediateValue = (expectedFinal / money - 1) * 100;
@@ -711,7 +717,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     penaltyMultiplier = 1 - (details.chance / 100) * lossFraction;
   } else if (["forceBlue", "forceRed", "forceGreen"].includes(details.penaltyType)) {
     penaltyMultiplier = 1 -
-      (details.chance / 100) * FORCED_COLOR_EQUIVALENT_COST;
+      (details.chance / 100) * getForcedColorEquivalentCost(choiceCount);
   }
   let value = (baseMultiplier * penaltyMultiplier - 1) * 100;
 
@@ -725,7 +731,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
   return value;
 }
 
-function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns = 0) {
+function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns = 0, choiceCount = 2) {
   const money = Number(currentMoney);
   const hasMoney = Number.isFinite(money) && money > 0;
   const details = getEffectivePenaltyDetails(
@@ -751,7 +757,7 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
     "forceBlue", "forceRed", "forceGreen"
   ].includes(details.penaltyType);
   const penaltyOutcomeLoss = isForcedColor
-    ? Math.max(baseLoss, Math.min(1, baseLoss + FORCED_COLOR_EQUIVALENT_COST))
+    ? Math.max(baseLoss, Math.min(1, baseLoss + getForcedColorEquivalentCost(choiceCount)))
     : penaltyLoss;
 
   const chance = details.chance / 100;
@@ -868,11 +874,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const valueById = new Map(candidates.map(choice => [
     choice.id,
-    estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns)
+    estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns, targetCount)
   ]));
   const riskById = new Map(candidates.map(choice => [
     choice.id,
-    getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns)
+    getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns, targetCount)
   ]));
 
   // 선택지 수에 따라 위험도 구성이 달라집니다.
@@ -1904,7 +1910,7 @@ function renderGame() {
 
     item.color.textContent = item.colorName.toUpperCase();
     item.title.textContent = choice.title;
-    item.penalty.textContent = getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns);
+    item.penalty.textContent = getChoicePenaltyText(choice, game.money, game.startAmount, game.reduceLossTurns, game.choices.length);
 
     const blocked = Boolean(
       game.forcedColor && game.forcedColor !== item.colorName
@@ -1951,7 +1957,8 @@ function applyPenalty(choice, selectedColor, beforeMoney = null) {
     choice,
     beforeMoney == null ? game.money : beforeMoney,
     game.startAmount,
-    game.reduceLossTurns
+    game.reduceLossTurns,
+    game.choices.length
   );
   const effectivePenaltyType = details.penaltyType;
   const effectiveChance = details.chance;
