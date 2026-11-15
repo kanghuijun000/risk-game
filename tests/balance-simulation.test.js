@@ -15,6 +15,9 @@ function wilsonInterval(successes, n) {
 
 function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) {
   api.setSeed(seed);
+  const checkpoints = Array.isArray(maxTurns) ? [...maxTurns] : [maxTurns];
+  const finalHorizon = Math.max(...checkpoints);
+  const snapshots = [];
   let money = stake;
   let reduceLossTurns = 0;
   let safePositiveTurns = 0;
@@ -31,7 +34,7 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
   let realizedTurnCount = 0;
 
   const colors = ["blue", "red", "green"];
-  while (turns < maxTurns && money > 0 && choices.length) {
+  while (turns < finalHorizon && money > 0 && choices.length) {
     if (strategy === "stopAfterProfit" && money > stake) break;
     let available = choices
       .map((choice, index) => ({ choice, index, color: colors[index] }))
@@ -134,21 +137,31 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
     choices = api.generateChoices(
       choices, choiceCount, safePositiveTurns > 0, money, stake, reduceLossTurns
     );
+    if (checkpoints.includes(turns)) snapshots.push(makeSnapshot(turns));
   }
 
-  return {
-    final: money,
-    turns,
-    ruin: money <= 0,
-    returnPct: (money / stake - 1) * 100,
-    averagePredictedEV: predictedEVTurns ? predictedEVSum / predictedEVTurns : 0,
-    averageRealizedTurnReturn: realizedTurnCount ? realizedTurnReturnSum / realizedTurnCount : 0,
-    maxDrawdown,
-    rerollsUsed
-  };
+  function makeSnapshot(horizon) {
+    return {
+      horizon,
+      final: money,
+      turns,
+      ruin: money <= 0,
+      returnPct: (money / stake - 1) * 100,
+      averagePredictedEV: predictedEVTurns ? predictedEVSum / predictedEVTurns : 0,
+      averageRealizedTurnReturn: realizedTurnCount ? realizedTurnReturnSum / realizedTurnCount : 0,
+      maxDrawdown,
+      rerollsUsed
+    };
+  }
+  for (const checkpoint of checkpoints) {
+    if (!snapshots.some(item => item.horizon === checkpoint)) {
+      snapshots.push(makeSnapshot(checkpoint));
+    }
+  }
+  return snapshots.sort((a, b) => a.horizon - b.horizon);
 }
 
-test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
+test("stateful Monte Carlo: 판돈·선택 모드·전략별 1~100턴 결과", {
   timeout: 1200000,
   skip: process.env.RUN_EXTENDED_BALANCE_SIM !== "1"
 }, () => {
@@ -157,50 +170,54 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", {
   const modes = [2, 3];
   const strategies = ["random", "lowestRisk", "mediumRisk", "highestEV", "rerollAware", "stopAfterProfit"];
   const horizons = [1, 5, 10, 20, 50, 100];
-  const sessionsPerCell = 30;
+  const sessionsPerCell = 12;
   const rows = [];
 
-  for (const maxTurns of horizons) {
-    for (const stake of stakes) {
+  for (const stake of stakes) {
     for (const choiceCount of modes) {
       for (const strategy of strategies) {
-        const results = [];
+        const resultsByHorizon = new Map(horizons.map(horizon => [horizon, []]));
         for (let i = 0; i < sessionsPerCell; i++) {
           const seed = (
-            0x9e3779b9 + stake * 17 + choiceCount * 100003 + maxTurns * 65537 + i * 7919
+            0x9e3779b9 + stake * 17 + choiceCount * 100003 + i * 7919
           ) >>> 0;
-          results.push(simulateSession(api, {
-            stake, choiceCount, strategy, maxTurns, seed
-          }));
+          const snapshots = simulateSession(api, {
+            stake, choiceCount, strategy, maxTurns: horizons, seed
+          });
+          for (const snapshot of snapshots) {
+            resultsByHorizon.get(snapshot.horizon).push(snapshot);
+          }
         }
 
-        const returns = results.map(item => item.returnPct).sort((a, b) => a - b);
-        const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
-        const sd = Math.sqrt(
-          returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
-          Math.max(1, returns.length - 1)
-        );
-        const ruinCount = results.filter(item => item.ruin).length;
-        const meanTurns = results.reduce((sum, item) => sum + item.turns, 0) / results.length;
-        const avgDrawdown = results.reduce((sum, item) => sum + item.maxDrawdown, 0) / results.length;
-        const q = p => returns[Math.floor((returns.length - 1) * p)];
-        rows.push({
-          stake, mode: choiceCount, strategy, horizon: maxTurns, n: sessionsPerCell,
-          meanReturnPct: Number(mean.toFixed(2)),
-          meanSE: Number((sd / Math.sqrt(sessionsPerCell)).toFixed(2)),
-          medianReturnPct: Number(q(0.5).toFixed(2)),
-          p10ReturnPct: Number(q(0.1).toFixed(2)),
-          p90ReturnPct: Number(q(0.9).toFixed(2)),
-          ruinPct: Number((ruinCount / sessionsPerCell * 100).toFixed(1)),
-          ruinCI95: wilsonInterval(ruinCount, sessionsPerCell).map(v => Number((v * 100).toFixed(1))),
-          avgTurns: Number(meanTurns.toFixed(2)),
-          avgMaxDrawdownPct: Number((avgDrawdown * 100).toFixed(1)),
-          avgPredictedEV: Number((results.reduce((sum, item) => sum + item.averagePredictedEV, 0) / results.length).toFixed(3)),
-          avgRealizedTurnReturn: Number((results.reduce((sum, item) => sum + item.averageRealizedTurnReturn, 0) / results.length).toFixed(3)),
-          avgRerolls: Number((results.reduce((sum, item) => sum + item.rerollsUsed, 0) / results.length).toFixed(2))
-        });
+        for (const horizon of horizons) {
+          const results = resultsByHorizon.get(horizon);
+          const returns = results.map(item => item.returnPct).sort((a, b) => a - b);
+          const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+          const sd = Math.sqrt(
+            returns.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+            Math.max(1, returns.length - 1)
+          );
+          const ruinCount = results.filter(item => item.ruin).length;
+          const meanTurns = results.reduce((sum, item) => sum + item.turns, 0) / results.length;
+          const avgDrawdown = results.reduce((sum, item) => sum + item.maxDrawdown, 0) / results.length;
+          const q = p => returns[Math.floor((returns.length - 1) * p)];
+          rows.push({
+            stake, mode: choiceCount, strategy, horizon, n: sessionsPerCell,
+            meanReturnPct: Number(mean.toFixed(2)),
+            meanSE: Number((sd / Math.sqrt(sessionsPerCell)).toFixed(2)),
+            medianReturnPct: Number(q(0.5).toFixed(2)),
+            p10ReturnPct: Number(q(0.1).toFixed(2)),
+            p90ReturnPct: Number(q(0.9).toFixed(2)),
+            ruinPct: Number((ruinCount / sessionsPerCell * 100).toFixed(1)),
+            ruinCI95: wilsonInterval(ruinCount, sessionsPerCell).map(v => Number((v * 100).toFixed(1))),
+            avgTurns: Number(meanTurns.toFixed(2)),
+            avgMaxDrawdownPct: Number((avgDrawdown * 100).toFixed(1)),
+            avgPredictedEV: Number((results.reduce((sum, item) => sum + item.averagePredictedEV, 0) / results.length).toFixed(3)),
+            avgRealizedTurnReturn: Number((results.reduce((sum, item) => sum + item.averageRealizedTurnReturn, 0) / results.length).toFixed(3)),
+            avgRerolls: Number((results.reduce((sum, item) => sum + item.rerollsUsed, 0) / results.length).toFixed(2))
+          });
+        }
       }
-    }
     }
   }
 
