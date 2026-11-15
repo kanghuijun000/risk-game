@@ -387,7 +387,7 @@ test("저장된 기존 색상 강제 선택지는 재생성된 기본 정의가 
   const normalizeStart = source.indexOf("function normalizeChoice(");
   const normalizeEnd = source.indexOf("/* =========================" + String.fromCharCode(10) + "   저장과 복구", normalizeStart);
   assert.ok(normalizeStart >= 0 && normalizeEnd > normalizeStart);
-  assert.match(source.slice(normalizeStart, normalizeEnd), /preserveLegacyForcedColorChoice\\(\\{ \.\.\.known \\}, raw\\)/);
+  assert.ok(source.slice(normalizeStart, normalizeEnd).includes("preserveLegacyForcedColorChoice({ ...known }, raw)"));
 
   const api = loadBalanceEngine(0x98765432);
   const cases = [
