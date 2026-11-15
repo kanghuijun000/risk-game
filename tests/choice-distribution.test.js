@@ -1,6 +1,7 @@
 "use strict";
 
 const test = require("node:test");
+const assert = require("node:assert/strict");
 const { loadBalanceEngine } = require("./balance-simulation-helpers");
 
 function incomeTier(choice, money) {
