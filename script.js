@@ -549,20 +549,41 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
   return immediateValue;
 }
 
-function getChoiceRiskLevel(choice, currentMoney, startAmount) {
-  const penaltyType = choice.penaltyType === "cashRisk"
-    ? getCashRisk(choice, currentMoney, startAmount).penaltyType
-    : choice.penaltyType;
-  return {
-    none: 0,
-    forceBlue: 1,
-    forceRed: 1,
-    forceGreen: 1,
-    loss10: 2,
-    loss25: 3,
-    loss50: 4,
-    totalLoss: 5
-  }[penaltyType] ?? 0;
+function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns = 0) {
+  const cashRisk = choice.penaltyType === "cashRisk"
+    ? getCashRisk(choice, currentMoney, startAmount)
+    : null;
+  const penaltyType = cashRisk ? cashRisk.penaltyType : choice.penaltyType;
+  const lossFraction = {
+    loss10: 0.10,
+    loss25: 0.25,
+    loss50: 0.50,
+    totalLoss: 1
+  }[penaltyType] ?? (
+    ["forceBlue", "forceRed", "forceGreen"].includes(penaltyType)
+      ? FORCED_COLOR_EQUIVALENT_COST
+      : 0
+  );
+
+  const isLossPenalty = ["loss10", "loss25", "loss50", "totalLoss"].includes(penaltyType);
+  const baseChance = cashRisk
+    ? cashRisk.chance
+    : getAdaptivePenaltyChance(choice, currentMoney, startAmount);
+  const effectiveChance = baseChance * (
+    isLossPenalty && reduceLossTurns > 0
+      ? LOSS_CHANCE_REDUCTION_FACTOR
+      : 1
+  );
+
+  // 손실 발생 가능성뿐 아니라 한 번 발생했을 때의 최대 손실 규모도 함께 반영합니다.
+  // 따라서 낮은 확률의 전액 손실은 단순한 저위험으로 분류되지 않습니다.
+  const expectedLossScore = effectiveChance * lossFraction;
+  const tailLossScore = lossFraction * 20;
+  const riskScore = expectedLossScore + tailLossScore;
+
+  // 0: 저위험, 1: 중위험, 2: 고위험
+  const tier = riskScore <= 6.5 ? 0 : riskScore <= 20 ? 1 : 2;
+  return { tier, riskScore, chance: effectiveChance, lossFraction };
 }
 
 function generateChoices(previous = null, count = 2, safeBoost = false, currentMoney = null, startAmount = null, reduceLossTurns = 0) {
@@ -579,23 +600,28 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     choice.id,
     estimateChoiceValue(choice, currentMoney, startAmount, reduceLossTurns)
   ]));
+  const riskById = new Map(candidates.map(choice => [
+    choice.id,
+    getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns)
+  ]));
 
-  // 안전 계열과 위험 계열을 함께 제시해 두 선택지의 위험·보상 구조가 실제로 비교되도록 합니다.
+  // 선택지 수에 따라 위험도 구성이 달라집니다.
+  // 2개 모드: 서로 다른 위험도 2종류 이상
+  // 3개 모드: 저위험·중위험·고위험을 하나씩 포함
   const combinations = [];
   function build(startIndex, picked) {
     if (picked.length === targetCount) {
-      const hasSafe = picked.some(choice =>
-        SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id)
-      );
-      const hasRisky = picked.some(choice =>
-        RISKY_CHOICES.some(riskyChoice => riskyChoice.id === choice.id)
-      );
-      if (!hasSafe || !hasRisky) return;
+      const tiers = picked.map(choice => riskById.get(choice.id).tier);
+      const uniqueTiers = new Set(tiers);
+      if (targetCount === 2 && uniqueTiers.size < 2) return;
+      if (targetCount === 3 && uniqueTiers.size < 3) return;
 
       const values = picked.map(choice => valueById.get(choice.id));
       const spread = Math.max(...values) - Math.min(...values);
       combinations.push({
         choices: picked.slice(),
+        tiers,
+        tierKey: tiers.slice().sort((a, b) => a - b).join("-"),
         spread,
         averageValue: values.reduce((sum, value) => sum + value, 0) / values.length,
         bestValue: Math.max(...values),
@@ -620,14 +646,14 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
+  if (!available.length) return candidates.slice(0, targetCount);
 
-  // 기대 손익이 크게 치우친 조합만 제외하고, 다양한 위험·보상 조합을 후보로 유지합니다.
+  // 기대 손익이 크게 치우친 조합은 우선 제외하되, 선택지의 위험도 차이는 유지합니다.
   let eligible = available.filter(item =>
     item.spread <= 1.25 && item.bestValue <= 0.25 && item.bestValue >= -0.75
   );
   if (!eligible.length) eligible = available.filter(item => item.spread <= 2);
   if (!eligible.length) eligible = available;
-  if (!eligible.length) return candidates.slice(0, targetCount);
 
   const targetBestValue = TARGET_CHOICE_EV_PERCENT;
   const score = item =>
@@ -636,10 +662,15 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     0.25 * item.spread;
 
   const occurrenceCount = new Map();
+  const tierCombinationCount = new Map();
   eligible.forEach(item => {
     item.choices.forEach(choice => {
       occurrenceCount.set(choice.id, (occurrenceCount.get(choice.id) || 0) + 1);
     });
+    tierCombinationCount.set(
+      item.tierKey,
+      (tierCombinationCount.get(item.tierKey) || 0) + 1
+    );
   });
 
   const weighted = eligible.map(item => {
@@ -659,7 +690,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     const rarityWeight = baseRarityWeight *
       (targetCount === 3 && containsRareJackpot ? 0.35 : 1);
     const riskLevels = item.choices.map(choice =>
-      getChoiceRiskLevel(choice, currentMoney, startAmount)
+      riskById.get(choice.id).tier
     );
     const riskGap = Math.max(...riskLevels) - Math.min(...riskLevels);
 
@@ -670,10 +701,11 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
           (sum, choice) => sum + 1 / occurrenceCount.get(choice.id),
           0
         ) *
+        (1 / tierCombinationCount.get(item.tierKey)) *
         (hasBonus ? 0.8 : 1) *
         (hasNoPenaltyZero ? 0.35 : 1) *
         rarityWeight *
-        (1 + Math.min(3, riskGap) * 0.12) *
+        (1 + riskGap * 0.12) *
         (1 / (1 + score(item))) *
         (safeBoost && item.choices.some(choice =>
           SAFE_CHOICES.some(safeChoice => safeChoice.id === choice.id) &&
@@ -697,6 +729,7 @@ function generateChoices(previous = null, count = 2, safeBoost = false, currentM
     }
   }
 
+  // 각 위치는 파랑·빨강·초록에 연결되므로, 무작위 셔플로 색상과 위험도의 고정 결합을 방지합니다.
   const selected = picked.choices.map(choice => ({ ...choice }));
   for (let i = selected.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
