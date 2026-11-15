@@ -206,3 +206,19 @@ This sample is exploratory only (100 sessions per cell; wide uncertainty). It su
 - Run browser/PWA regression checks before considering merge.
 
 **Do not merge or deploy yet.** No change in this branch is live on Pages, and no player balance or Supabase data has been touched.
+
+### Red/blue/green position-value comparison
+
+A separate seeded sample generated 6,000 choice sets per mode at a 10,000 balance and compared the estimated value of each returned color position. Since the generator shuffles the selected options before assigning positions, this tests whether the color assignment itself creates an advantage.
+
+| Mode | Position | Mean estimated EV | Standard error | Low / medium / high risk share |
+|---|---|---:|---:|---:|
+| 2 choices | Blue position | -0.0558% | 0.0004 pp | 50.2 / 41.5 / 8.3% |
+| 2 choices | Red position | -0.0564% | 0.0004 pp | 49.8 / 41.3 / 8.8% |
+| 3 choices | Blue position | -0.0542% | 0.0004 pp | 34.2 / 32.6 / 33.3% |
+| 3 choices | Red position | -0.0537% | 0.0003 pp | 32.1 / 33.7 / 34.2% |
+| 3 choices | Green position | -0.0539% | 0.0003 pp | 33.7 / 33.8 / 32.6% |
+
+The largest observed mean-EV gap was 0.0006 percentage points in two-choice mode and 0.0005 percentage points in three-choice mode. These differences are small relative to the sampling error and do not show a meaningful structural color advantage in this sample. This is an estimated-value comparison, not a long-run realized payout test under forced-color chains.
+
+Current source inventory remains 11 safe entries and 23 risky entries (34 defined entries); one obsolete duplicate is filtered out during generation.
