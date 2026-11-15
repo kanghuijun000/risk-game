@@ -97,6 +97,11 @@ test("손실 감소 보너스는 부분 손실에만 정확히 20% 적용된다"
       const choice = api.scaleCashChoice(raw, stake);
       const base = api.getEffectivePenaltyDetails(choice, stake, stake, 0);
       const boosted = api.getEffectivePenaltyDetails(choice, stake, stake, 5);
+      for (const count of [2, 3]) {
+        const baseProfile = api.getChoiceRiskProfile(choice, stake, stake, 0, count);
+        const boostedProfile = api.getChoiceRiskProfile(choice, stake, stake, 5, count);
+        assert.equal(boostedProfile.tier, baseProfile.tier, `${choice.id} changed intrinsic tier under bonus`);
+      }
       if (["loss10", "loss25", "loss50"].includes(base.penaltyType)) {
         assert.equal(boosted.reductionApplies, true, choice.id);
         assert.ok(Math.abs(boosted.chance - base.chance * 0.8) <= 0.0001, choice.id);
