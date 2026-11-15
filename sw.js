@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "risk-game-cache-v92";
+const CACHE_NAME = "risk-game-cache-v93";
 
 const APP_FILES = [
   "./",
