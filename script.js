@@ -603,7 +603,8 @@ function prepareChoiceForGeneration(choice, reduceLossTurns = 0, choiceCount = 2
   return {
     ...choice,
     effect: -cost,
-    title: `−${costText}%`
+    title: `−${costText}%`,
+    bonusAddedTurns: addedTurns
   };
 }
 
@@ -738,9 +739,10 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
     const immediateValue = (expectedFinal / money - 1) * 100;
     if (choice.bonusType !== "reduceLoss") return immediateValue;
 
-    const addedTurns = getAddedReduceLossTurns(
-      reduceLossTurns, choice.bonusTurns
-    );
+    const storedAddedTurns = Number(choice.bonusAddedTurns);
+    const addedTurns = Number.isFinite(storedAddedTurns)
+      ? Math.max(0, storedAddedTurns)
+      : getAddedReduceLossTurns(reduceLossTurns, choice.bonusTurns);
     const futureValue = addedTurns * getReduceLossReferenceExposure(choiceCount) *
       (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 100;
     return immediateValue + futureValue;

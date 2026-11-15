@@ -404,3 +404,22 @@ test("저장된 기존 색상 강제 선택지는 재생성된 기본 정의가 
   const unrelated = { id: "safe15", penaltyType: "loss25", penaltyChance: 10 };
   assert.equal(api.preserveLegacyForcedColorChoice({ ...unrelated }, unrelated).penaltyType, "loss25");
 });
+
+
+test("손실 감소 보너스의 메뉴 평가가 실제 추가 적용 턴 수와 일치한다", () => {
+  const api = loadBalanceEngine(0x13572468);
+  const base = api.SAFE_CHOICES.find(choice => choice.id === "safeBonus5");
+  for (const mode of [2, 3]) {
+    for (const remaining of [0, 1, 2, 4, 5]) {
+      const prepared = api.prepareChoiceForGeneration(base, remaining, mode);
+      const expectedAdded = Math.max(0, 5 - Math.max(0, remaining - 1));
+      assert.equal(prepared.bonusAddedTurns, expectedAdded);
+      const value = api.estimateChoiceValue(prepared, 10000, 10000, 0, mode);
+      assert.ok(
+        Math.abs(value - api.TARGET_CHOICE_EV_PERCENT) < 0.02,
+        `mode=${mode}, remaining=${remaining}, value=${value}`
+      );
+    }
+    assert.equal(api.prepareChoiceForGeneration(base, 6, mode), null);
+  }
+});
