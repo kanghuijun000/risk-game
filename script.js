@@ -504,7 +504,7 @@ function estimateChoiceValue(choice, currentMoney = null, startAmount = null, re
   const baseChance = getAdaptivePenaltyChance(choice, hasMoney ? money : null, startAmount);
   const chance = Math.round(
     baseChance * (
-      ["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType) &&
+      isReducibleLossPenalty(choice.penaltyType) &&
       reduceLossTurns > 0
         ? LOSS_CHANCE_REDUCTION_FACTOR
         : 1
