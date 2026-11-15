@@ -143,6 +143,24 @@ test("각 실제 금액 패널티 선택지의 확률은 목표 기대손익과 
   assert.ok(checked >= 100, `expected broad coverage, checked only ${checked} cases`);
 });
 
+test("보상 범위는 +0.1% 미세 보상부터 +900% 희귀 보상과 100배까지 포함한다", () => {
+  const api = loadBalanceEngine(0x10101010);
+  const micro = api.SAFE_CHOICES.find(choice => choice.id === "micro01");
+  const jackpot = api.RISKY_CHOICES.find(choice => choice.id === "rare900");
+  const ultra = api.RISKY_CHOICES.find(choice => choice.id === "ultra100x");
+
+  assert.ok(micro);
+  assert.equal(micro.effect, 0.1);
+  assert.ok(Math.abs(
+    api.estimateChoiceValue(micro, 10000, 10000, 0, 2) -
+    api.TARGET_CHOICE_EV_PERCENT
+  ) < 0.02);
+  assert.ok(jackpot);
+  assert.equal(jackpot.effect, 900);
+  assert.ok(ultra);
+  assert.equal(ultra.effect, 9900);
+});
+
 test("손실 감소 보너스는 부분 손실에만 정확히 20% 적용된다", () => {
   const api = loadBalanceEngine(0x10293847);
   const choices = [...api.SAFE_CHOICES, ...api.RISKY_CHOICES];
