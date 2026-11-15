@@ -27,6 +27,8 @@ test("선택지 등장 분포: 판돈·모드별 위험도와 수익 규모의 �
         risk: [0, 0, 0], income: [0, 0, 0]
       }));
       const allIncomeTierMenus = [0, 0, 0, 0];
+      const riskPairCounts = new Map();
+      const menuRiskTierCounts = [0, 0, 0, 0];
       const choiceCounts = new Map();
 
       api.setSeed((0x31415926 + stake * 13 + mode * 65537) >>> 0);
@@ -34,6 +36,7 @@ test("선택지 등장 분포: 판돈·모드별 위험도와 수익 규모의 �
         const choices = api.generateChoices(null, mode, false, stake, stake, 0);
         const menuRisk = new Set();
         const menuIncome = new Set();
+        const menuRiskList = [];
         for (let position = 0; position < choices.length; position++) {
           const choice = choices[position];
           const risk = api.getChoiceRiskProfile(choice, stake, stake, 0, mode).tier;
@@ -44,10 +47,14 @@ test("선택지 등장 분포: 판돈·모드별 위험도와 수익 규모의 �
           menusByPosition[position].risk[risk]++;
           menusByPosition[position].income[income]++;
           menuRisk.add(risk);
+          menuRiskList.push(risk);
           menuIncome.add(income);
           choiceCounts.set(choice.id, (choiceCounts.get(choice.id) || 0) + 1);
         }
         allIncomeTierMenus[menuIncome.size]++;
+        menuRiskTierCounts[menuRisk.size]++;
+        const pairKey = menuRiskList.slice().sort((a,b)=>a-b).join("-");
+        riskPairCounts.set(pairKey, (riskPairCounts.get(pairKey) || 0) + 1);
       }
 
       rows.push({
@@ -56,6 +63,8 @@ test("선택지 등장 분포: 판돈·모드별 위험도와 수익 규모의 �
         incomeTierSharePct: incomeCounts.map(x => Number((x / (samples * mode) * 100).toFixed(1))),
         riskIncomeMatrix: riskIncomeMatrix.map(row => row.map(x => Number((x / (samples * mode) * 100).toFixed(1)))),
         menusWithOneTwoThreeIncomeTiers: allIncomeTierMenus.slice(1).map(x => Number((x / samples * 100).toFixed(1))),
+        menusWithOneTwoThreeRiskTiers: menuRiskTierCounts.slice(1).map(x => Number((x / samples * 100).toFixed(1))),
+        riskTierPairSharePct: Object.fromEntries([...riskPairCounts.entries()].map(([k,v]) => [k, Number((v / samples * 100).toFixed(1))])),
         positions: menusByPosition.map(x => ({
           risk: x.risk.map(v => Number((v / samples * 100).toFixed(1))),
           income: x.income.map(v => Number((v / samples * 100).toFixed(1)))
