@@ -658,7 +658,7 @@ function getChoiceRiskProfile(choice, currentMoney, startAmount, reduceLossTurns
 }
 
 function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous) {
-  if (candidates.length <= targetCount) return candidates.slice();
+  if (candidates.length < targetCount) return candidates.slice();
 
   const combinations = [];
   function build(startIndex, picked) {
@@ -679,10 +679,15 @@ function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, c
           : Number(choice.effect) || 0;
         return gross <= 2 ? 0 : gross <= 10 ? 1 : 2;
       });
+      const tiers = new Set(risks.map(item => item.tier));
+      const hasRequiredTierMix = targetCount === 2
+        ? tiers.has(0) && tiers.size >= 2
+        : tiers.has(0) && tiers.has(1) && tiers.has(2);
       combinations.push({
         choices: picked.slice(),
         previous: samePair(picked, previous),
-        riskTierCount: new Set(risks.map(item => item.tier)).size,
+        hasRequiredTierMix,
+        riskTierCount: tiers.size,
         incomeTierCount: new Set(incomeTiers).size,
         riskSpread: Math.max(...risks.map(item => item.riskScore)) -
           Math.min(...risks.map(item => item.riskScore)),
@@ -704,8 +709,11 @@ function selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, c
   build(0, []);
 
   if (!combinations.length) return candidates.slice(0, targetCount);
-  const fresh = combinations.filter(item => !item.previous);
-  const pool = (fresh.length ? fresh : combinations).sort((a, b) =>
+  const tierBalanced = combinations.filter(item => item.hasRequiredTierMix);
+  const source = tierBalanced.length ? tierBalanced : combinations;
+  const fresh = source.filter(item => !item.previous);
+  const pool = (fresh.length ? fresh : source).sort((a, b) =>
+    Number(b.hasRequiredTierMix) - Number(a.hasRequiredTierMix) ||
     b.riskTierCount - a.riskTierCount ||
     b.incomeTierCount - a.incomeTierCount ||
     b.riskSpread - a.riskSpread ||
