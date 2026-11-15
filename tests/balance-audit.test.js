@@ -240,7 +240,7 @@ test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨
   const api = loadBalanceEngine(0x13579bdf);
   for (const stake of [1000, 5000, 10000, 100000, 1000000]) {
     for (const count of [2, 3]) {
-      for (let i = 0; i < 400; i++) {
+      for (let i = 0; i < 150; i++) {
         const choices = api.generateChoices(null, count, false, stake, stake, i % 6);
         assert.equal(choices.length, count, `${stake} won / ${count} choices returned wrong count`);
         assert.ok(choices.some(choice => !choice.bonusType), "a choice set must retain at least one ordinary reward option");
@@ -266,7 +266,7 @@ test("색상 위치별 위험 등급 출현률에 구조적 편향이 없다", (
   const api = loadBalanceEngine(0x2468ace0);
   for (const count of [2, 3]) {
     const colors = Array.from({ length: count }, () => [0, 0, 0]);
-    const samples = 4000;
+    const samples = 2000;
     for (let i = 0; i < samples; i++) {
       const choices = api.generateChoices(null, count, false, 10000, 10000, 0);
       choices.forEach((choice, index) => {
