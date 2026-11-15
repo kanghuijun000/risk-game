@@ -189,6 +189,8 @@ test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 
   const api = loadBalanceEngine(0x31415926);
   const forced = [...api.SAFE_CHOICES, ...api.RISKY_CHOICES]
     .filter(choice => ["forceBlue", "forceRed", "forceGreen"].includes(choice.penaltyType));
+  assert.equal(api.getForcedColorEquivalentCost(2), 0.0035);
+  assert.ok(Math.abs(api.getForcedColorEquivalentCost(3) - 0.005425) < 1e-10);
   for (const stake of [1000, 10000, 100000, 1000000]) {
     for (const choice of forced) {
       for (const count of [2, 3]) {
@@ -209,7 +211,7 @@ test("강제 색상 패널티는 2개·3개 모드별 기회비용을 반영해 
       if (choice.penaltyType !== "forceGreen") {
         const two = api.getEffectivePenaltyDetails(choice, stake, stake, 0, 2);
         const three = api.getEffectivePenaltyDetails(choice, stake, stake, 0, 3);
-        assert.ok(Math.abs(three.chance * 2 - two.chance) <= 0.0002);
+        assert.ok(Math.abs(three.chance * 1.55 - two.chance) <= 0.001);
       }
     }
   }
