@@ -503,7 +503,7 @@ function prepareChoiceForGeneration(choice, reduceLossTurns = 0) {
     addedTurns * REDUCE_LOSS_REFERENCE_EXPOSURE *
     (1 - LOSS_CHANCE_REDUCTION_FACTOR) * 10000
   ) / 100;
-  const costText = cost.toFixed(2).replace(/\\.?0+$/, "");
+  const costText = cost.toFixed(2).replace(/\.?0+$/, "");
   return {
     ...choice,
     effect: -cost,
