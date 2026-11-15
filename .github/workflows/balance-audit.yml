@@ -8,7 +8,6 @@ on:
   push:
     branches:
       - main
-      - balance-system-audit
   pull_request:
     branches:
       - main
@@ -16,6 +15,7 @@ on:
 jobs:
   balance-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
