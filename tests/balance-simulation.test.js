@@ -96,6 +96,8 @@ function simulateSession(api, { stake, choiceCount, strategy, maxTurns, seed }) 
         forcedColor = details.penaltyType.slice(5).toLowerCase();
       }
     }
+    maxBalance = Math.max(maxBalance, money);
+    maxDrawdown = Math.max(maxDrawdown, (maxBalance - money) / Math.max(1, maxBalance));
     if (money <= 0) break;
 
     if (reduceLossTurns > 0) reduceLossTurns--;
@@ -128,8 +130,8 @@ test("stateful Monte Carlo: 판돈·선택 모드·전략별 20턴 결과", { ti
   const api = loadBalanceEngine(0x7a11ce55);
   const stakes = [1000, 5000, 10000, 100000, 1000000];
   const modes = [2, 3];
-  const strategies = ["random", "lowestRisk", "highestEV"];
-  const sessionsPerCell = 50;
+  const strategies = ["random", "lowestRisk", "highestEV", "rerollAware"];
+  const sessionsPerCell = 40;
   const rows = [];
 
   for (const stake of stakes) {
