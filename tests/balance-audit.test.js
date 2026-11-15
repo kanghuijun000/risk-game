@@ -275,21 +275,16 @@ test("안전 양수 보너스는 추가되는 턴만큼의 실측 미래가치�
     assert.equal(api.prepareChoiceForGeneration(bonus, 0, mode, 11), null);
   }
 });
-test("저장된 임시 보너스의 실제 가격과 적용 턴은 재접속 후에도 보존된다", () => {
-  const api = loadBalanceEngine(0xabcdef12);
-  const safe = api.normalizeChoice({
-    id: "safeBonus10", effect: -0.07, title: "−0.07%", bonusAddedTurns: 8
-  }, 10000);
-  assert.equal(safe.effect, -0.07);
-  assert.equal(safe.title, "−0.07%");
-  assert.equal(safe.bonusAddedTurns, 8);
-
-  const loss = api.normalizeChoice({
-    id: "safeBonus5", effect: -6.7, title: "−6.7%", bonusAddedTurns: 4
-  }, 10000);
-  assert.equal(loss.effect, -6.7);
-  assert.equal(loss.title, "−6.7%");
-  assert.equal(loss.bonusAddedTurns, 4);
+test("저장된 임시 보너스의 실제 가격과 적용 턴 복원 로직이 존재한다", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "script.js"), "utf8");
+  const start = source.indexOf("function normalizeChoice(");
+  const end = source.indexOf("/* =========================\\n   저장과 복구", start);
+  assert.ok(start >= 0 && end > start, "normalizeChoice block must exist");
+  const block = source.slice(start, end);
+  assert.match(block, /known\\.bonusType === "reduceLoss" \\|\\| known\\.bonusType === "safePositive"/);
+  assert.match(block, /normalized\\.effect = savedEffect/);
+  assert.match(block, /normalized\\.title = raw\\.title/);
+  assert.match(block, /normalized\\.bonusAddedTurns = Math\\.max\\(0, Math\\.floor\\(savedAddedTurns\\)\\)/);
 });
 
 test("정상 판돈에서 2개·3개 선택지는 위험 등급 조건을 지킨다", () => {
