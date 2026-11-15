@@ -1050,7 +1050,7 @@ function calculateBankAccrual(principal, rate, elapsedMs, fractionalRemainder = 
   const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
   const safeRemainder = Math.max(0, Math.min(0.999999999, Number(fractionalRemainder) || 0));
   const exactInterest =
-    safePrincipal * (safeRate / 100) * (safeElapsed / BANK_MINUTE_MS) +
+    safePrincipal * (safeRate / 100) * (safeElapsed / 60000) +
     safeRemainder;
   const whole = Math.floor(exactInterest + 1e-10);
   return {
