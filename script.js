@@ -444,6 +444,60 @@ function samePair(a, b) {
 // 같은 보상 비율을 유지합니다. 기준 잔액 10,000원에서 원래 금액을 그대로 적용합니다.
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
+
+const CHOICE_SET_EV_SPREAD_MAX = 0.25;
+const CHOICE_SET_EV_SPREAD_SCALE = 12;
+
+function getChoiceTargetEV(choice) {
+  const target = Number(choice && choice.balanceTargetEV);
+  return Number.isFinite(target)
+    ? Math.max(
+        TARGET_CHOICE_EV_PERCENT - CHOICE_SET_EV_SPREAD_MAX,
+        Math.min(TARGET_CHOICE_EV_PERCENT + CHOICE_SET_EV_SPREAD_MAX, target)
+      )
+    : TARGET_CHOICE_EV_PERCENT;
+}
+
+function getChoiceGrossRewardPercent(choice, currentMoney = null) {
+  if (!choice) return 0;
+  if (choice.amountEffect != null) {
+    const money = Number(currentMoney);
+    return Number.isFinite(money) && money > 0
+      ? Math.max(0, Number(choice.amountEffect) / money * 100)
+      : 0;
+  }
+  return Math.max(0, Number(choice.effect) || 0);
+}
+
+// 같은 메뉴 안에서 보상 규모가 큰 선택지에 아주 조금 더 높은 기대값을 배분합니다.
+// 차이가 작으면 조정도 작아지고, 메뉴 평균 기대값은 기존 목표를 유지합니다.
+function applyChoiceSetBalance(choices, currentMoney = null) {
+  const cloned = (choices || []).map(choice => ({ ...choice }));
+  if (cloned.length < 2) {
+    return cloned.map(choice => ({
+      ...choice,
+      balanceTargetEV: TARGET_CHOICE_EV_PERCENT
+    }));
+  }
+
+  const strengths = cloned.map(choice =>
+    Math.log1p(getChoiceGrossRewardPercent(choice, currentMoney))
+  );
+  const mean = strengths.reduce((sum, value) => sum + value, 0) / strengths.length;
+  const centered = strengths.map(value => value - mean);
+  const maxDeviation = Math.max(...centered.map(Math.abs));
+  const spread = Math.max(...strengths) - Math.min(...strengths);
+  const amplitude = CHOICE_SET_EV_SPREAD_MAX *
+    Math.tanh(spread / CHOICE_SET_EV_SPREAD_SCALE);
+
+  return cloned.map((choice, index) => ({
+    ...choice,
+    balanceTargetEV: maxDeviation > 1e-12
+      ? TARGET_CHOICE_EV_PERCENT +
+        centered[index] / maxDeviation * amplitude
+      : TARGET_CHOICE_EV_PERCENT
+  }));
+}
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
 const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0711, 3: 0.06628 };
 const SAFE_POSITIVE_REFERENCE_VALUE_BY_MODE = { 2: 0, 3: 0 };
@@ -522,7 +576,7 @@ function getCashRisk(choice, currentMoney, startAmount = null) {
   const penaltyAfter = penaltyType === "totalLoss" || after <= 1
     ? 0
     : clampMoney(Math.round(after * (1 - lossFraction)));
-  const targetFinal = money * (1 + TARGET_CHOICE_EV_PERCENT / 100);
+  const targetFinal = money * (1 + getChoiceTargetEV(choice) / 100);
   const lossAmount = after - penaltyAfter;
   const chance = lossAmount > 0
     ? ((after - targetFinal) / lossAmount) * 100
@@ -570,7 +624,7 @@ function getBalancedBasePenaltyChance(choice, penaltyType, currentMoney, fallbac
 
   const after = getMoneyAfterChoiceEffect(choice, money);
   if (after <= 0) return 0;
-  const targetFinal = money * (1 + TARGET_CHOICE_EV_PERCENT / 100);
+  const targetFinal = money * (1 + getChoiceTargetEV(choice) / 100);
 
   if (["loss10", "loss25", "loss50", "totalLoss"].includes(penaltyType)) {
     const penaltyAfter = getMoneyAfterPenalty(after, penaltyType);
@@ -1156,7 +1210,7 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
     const j = Math.floor(Math.random() * (i + 1));
     [selected[i], selected[j]] = [selected[j], selected[i]];
   }
-  return selected;
+  return applyChoiceSetBalance(selected, currentMoney ?? startAmount);
 }
 
 function calculateBankAccrual(principal, rate, elapsedMs, fractionalRemainder = 0) {
@@ -1204,6 +1258,13 @@ function normalizeChoice(raw, currentMoney = null) {
   const known = findChoice(raw.id);
   if (!known) return null;
   const normalized = preserveLegacyForcedColorChoice({ ...known }, raw);
+  const savedBalanceTarget = Number(raw.balanceTargetEV);
+  if (Number.isFinite(savedBalanceTarget)) {
+    normalized.balanceTargetEV = Math.max(
+      TARGET_CHOICE_EV_PERCENT - CHOICE_SET_EV_SPREAD_MAX,
+      Math.min(TARGET_CHOICE_EV_PERCENT + CHOICE_SET_EV_SPREAD_MAX, savedBalanceTarget)
+    );
+  }
   // 임시 보너스는 남은 턴에 따라 비용이 달라지므로 저장된 실제 비용·표시·적용 턴을 그대로 복원합니다.
   if (known.bonusType === "reduceLoss" || known.bonusType === "safePositive") {
     const savedEffect = Number(raw.effect);
