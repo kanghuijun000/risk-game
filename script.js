@@ -473,14 +473,18 @@ function getChoiceGrossRewardPercent(choice, currentMoney = null) {
 // 차이가 작으면 조정도 작아지고, 메뉴 평균 기대값은 기존 목표를 유지합니다.
 function applyChoiceSetBalance(choices, currentMoney = null) {
   const cloned = (choices || []).map(choice => ({ ...choice }));
-  if (cloned.length < 2) {
-    return cloned.map(choice => ({
-      ...choice,
-      balanceTargetEV: TARGET_CHOICE_EV_PERCENT
-    }));
-  }
+  const adjustable = cloned
+    .map((choice, index) => ({ choice, index }))
+    .filter(({ choice }) =>
+      choice.penaltyType === "cashRisk" ||
+      ["loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType)
+    );
+  cloned.forEach(choice => {
+    choice.balanceTargetEV = TARGET_CHOICE_EV_PERCENT;
+  });
+  if (adjustable.length < 2) return cloned;
 
-  const strengths = cloned.map(choice =>
+  const strengths = adjustable.map(({ choice }) =>
     Math.log1p(getChoiceGrossRewardPercent(choice, currentMoney))
   );
   const mean = strengths.reduce((sum, value) => sum + value, 0) / strengths.length;
@@ -490,13 +494,13 @@ function applyChoiceSetBalance(choices, currentMoney = null) {
   const amplitude = CHOICE_SET_EV_SPREAD_MAX *
     Math.tanh(spread / CHOICE_SET_EV_SPREAD_SCALE);
 
-  return cloned.map((choice, index) => ({
-    ...choice,
-    balanceTargetEV: maxDeviation > 1e-12
+  adjustable.forEach(({ index }, position) => {
+    cloned[index].balanceTargetEV = maxDeviation > 1e-12
       ? TARGET_CHOICE_EV_PERCENT +
-        centered[index] / maxDeviation * amplitude
-      : TARGET_CHOICE_EV_PERCENT
-  }));
+        centered[position] / maxDeviation * amplitude
+      : TARGET_CHOICE_EV_PERCENT;
+  });
+  return cloned;
 }
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
 const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0711, 3: 0.06628 };
@@ -1098,7 +1102,7 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
-  if (!available.length) return selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous);
+  if (!available.length) return applyChoiceSetBalance(selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous), currentMoney ?? startAmount);
 
   // 기대 손익이 크게 치우친 조합은 우선 제외하되, 선택지의 위험도 차이는 유지합니다.
   let eligible = available.filter(item =>
@@ -1191,7 +1195,7 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
 
   const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
   if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
-    return selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous);
+    return applyChoiceSetBalance(selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous), currentMoney ?? startAmount);
   }
 
   let roll = Math.random() * totalWeight;
