@@ -53,6 +53,8 @@ function loadBalanceEngine(seed = 0x5eed1234) {
       generateChoices,
       getChoiceRiskProfile,
       getEffectivePenaltyDetails,
+      applyChoiceSetBalance,
+      getChoiceTargetEV,
       formatChancePercent,
       getChoicePenaltyText,
       getMoneyAfterChoiceEffect,
@@ -466,5 +468,52 @@ test("손실 감소 보너스의 메뉴 평가가 실제 추가 적용 턴 수�
       );
     }
     assert.equal(api.prepareChoiceForGeneration(base, 6, mode), null);
+  }
+});
+
+
+test("같은 선택지 세트 안에서 보상 차이에 따라 기대값 목표가 부드럽게 달라진다", () => {
+  const api = loadBalanceEngine(0x33445566);
+  const close = api.applyChoiceSetBalance([
+    { id: "a", effect: 4 },
+    { id: "b", effect: 5 }
+  ], 10000);
+  const wide = api.applyChoiceSetBalance([
+    { id: "a", effect: 2 },
+    { id: "b", effect: 100 }
+  ], 10000);
+  const closeSpread = Math.abs(close[1].balanceTargetEV - close[0].balanceTargetEV);
+  const wideSpread = Math.abs(wide[1].balanceTargetEV - wide[0].balanceTargetEV);
+
+  assert.ok(closeSpread > 0 && closeSpread < wideSpread);
+  assert.ok(wideSpread <= 0.5);
+  for (const set of [close, wide]) {
+    const average = set.reduce((sum, choice) => sum + api.getChoiceTargetEV(choice), 0) / set.length;
+    assert.ok(Math.abs(average - api.TARGET_CHOICE_EV_PERCENT) < 1e-10);
+  }
+});
+
+test("생성된 선택지의 표시 패널티와 실제 판정은 세트별 목표 기대값을 따른다", () => {
+  const api = loadBalanceEngine(0x77889900);
+  for (const stake of [1000, 10000, 100000]) {
+    for (const count of [2, 3]) {
+      for (let i = 0; i < 100; i++) {
+        const choices = api.generateChoices(null, count, 0, stake, stake, 0);
+        assert.equal(choices.length, count);
+        const targets = choices.map(choice => api.getChoiceTargetEV(choice));
+        const average = targets.reduce((sum, value) => sum + value, 0) / targets.length;
+        assert.ok(Math.abs(average - api.TARGET_CHOICE_EV_PERCENT) < 1e-8);
+        choices.forEach(choice => {
+          const details = api.getEffectivePenaltyDetails(choice, stake, stake, 0, count);
+          const after = api.getMoneyAfterChoiceEffect(choice, stake);
+          const penaltyAfter = api.getMoneyAfterPenalty(after, details.penaltyType);
+          const expected = after * (1 - details.chance / 100) +
+            penaltyAfter * details.chance / 100;
+          const actual = (expected / stake - 1) * 100;
+          assert.ok(Math.abs(actual - api.getChoiceTargetEV(choice)) < 0.12,
+            `${choice.id}: target=${api.getChoiceTargetEV(choice)}, actual=${actual}`);
+        });
+      }
+    }
   }
 });
