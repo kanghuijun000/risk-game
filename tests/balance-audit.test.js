@@ -475,19 +475,24 @@ test("손실 감소 보너스의 메뉴 평가가 실제 추가 적용 턴 수�
 test("같은 선택지 세트 안에서 보상 차이에 따라 기대값 목표가 부드럽게 달라진다", () => {
   const api = loadBalanceEngine(0x33445566);
   const close = api.applyChoiceSetBalance([
-    { id: "a", effect: 4 },
-    { id: "b", effect: 5 }
+    { id: "a", effect: 4, penaltyType: "loss25", penaltyChance: 10 },
+    { id: "b", effect: 5, penaltyType: "loss25", penaltyChance: 10 }
   ], 10000);
   const wide = api.applyChoiceSetBalance([
-    { id: "a", effect: 2 },
-    { id: "b", effect: 100 }
+    { id: "a", effect: 2, penaltyType: "loss25", penaltyChance: 10 },
+    { id: "b", effect: 100, penaltyType: "loss25", penaltyChance: 10 }
   ], 10000);
   const closeSpread = Math.abs(close[1].balanceTargetEV - close[0].balanceTargetEV);
   const wideSpread = Math.abs(wide[1].balanceTargetEV - wide[0].balanceTargetEV);
 
   assert.ok(closeSpread > 0 && closeSpread < wideSpread);
   assert.ok(wideSpread <= 0.8);
-  for (const set of [close, wide]) {
+  const riskOnly = api.applyChoiceSetBalance([
+    { id: "low-risk", effect: 10, penaltyType: "loss10", penaltyChance: 10 },
+    { id: "high-risk", effect: 10, penaltyType: "totalLoss", penaltyChance: 10 }
+  ], 10000);
+  assert.ok(riskOnly[1].balanceTargetEV > riskOnly[0].balanceTargetEV);
+  for (const set of [close, wide, riskOnly]) {
     const average = set.reduce((sum, choice) => sum + api.getChoiceTargetEV(choice), 0) / set.length;
     assert.ok(Math.abs(average - api.TARGET_CHOICE_EV_PERCENT) < 1e-10);
   }
