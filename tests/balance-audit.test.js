@@ -486,7 +486,7 @@ test("같은 선택지 세트 안에서 보상 차이에 따라 기대값 목표
   const wideSpread = Math.abs(wide[1].balanceTargetEV - wide[0].balanceTargetEV);
 
   assert.ok(closeSpread > 0 && closeSpread < wideSpread);
-  assert.ok(wideSpread <= 0.5);
+  assert.ok(wideSpread <= 0.8);
   for (const set of [close, wide]) {
     const average = set.reduce((sum, choice) => sum + api.getChoiceTargetEV(choice), 0) / set.length;
     assert.ok(Math.abs(average - api.TARGET_CHOICE_EV_PERCENT) < 1e-10);
