@@ -9,7 +9,7 @@ function incomeTier(choice, money) {
     ? Number(choice.amountEffect) / Math.max(1, money) * 100
     : Number(choice.effect) || 0;
   if (gross <= 10) return 0;
-  if (gross <= 50) return 1;
+  if (gross < 50) return 1;
   return 2;
 }
 
