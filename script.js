@@ -1092,12 +1092,13 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
       ),
       1
     );
-    const containsRareJackpot = item.choices.some(choice =>
-      ["rare25", "rare50", "rare100", "rare900", "ultra100x"].includes(choice.id)
+    const containsUltraJackpot = item.choices.some(choice =>
+      ["rare900", "ultra100x"].includes(choice.id)
     );
-    // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
+    // +25~100% 고소득은 일반 고소득 구간으로 균형 조정하고,
+    // +900%와 100배만 초희귀 출현 보정을 유지합니다.
     const rarityWeight = baseRarityWeight * (
-      containsRareJackpot
+      containsUltraJackpot
         ? (targetCount === 3 ? 0.30 : 1.5)
         : 1
     );
