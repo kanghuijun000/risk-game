@@ -471,7 +471,7 @@ function getChoiceGrossRewardPercent(choice, currentMoney = null) {
 
 // 같은 메뉴 안에서 보상 규모가 큰 선택지에 아주 조금 더 높은 기대값을 배분합니다.
 // 차이가 작으면 조정도 작아지고, 메뉴 평균 기대값은 기존 목표를 유지합니다.
-function applyChoiceSetBalance(choices, currentMoney = null) {
+function applyChoiceSetBalance(choices, currentMoney = null, choiceCount = 2) {
   const cloned = (choices || []).map(choice => ({ ...choice }));
   const adjustable = cloned
     .map((choice, index) => ({ choice, index }))
@@ -484,9 +484,20 @@ function applyChoiceSetBalance(choices, currentMoney = null) {
   });
   if (adjustable.length < 2) return cloned;
 
-  const strengths = adjustable.map(({ choice }) =>
-    Math.log1p(getChoiceGrossRewardPercent(choice, currentMoney))
-  );
+  const strengths = adjustable.map(({ choice }) => {
+    const details = getEffectivePenaltyDetails(
+      choice, currentMoney, currentMoney, 0, choiceCount
+    );
+    const lossFraction = {
+      loss10: 0.10,
+      loss25: 0.25,
+      loss50: 0.50,
+      totalLoss: 1
+    }[details.penaltyType] || 0;
+    const riskSeverity = lossFraction * 0.75 + details.chance / 100 * 0.25;
+    return Math.log1p(getChoiceGrossRewardPercent(choice, currentMoney)) +
+      riskSeverity;
+  });
   const mean = strengths.reduce((sum, value) => sum + value, 0) / strengths.length;
   const centered = strengths.map(value => value - mean);
   const maxDeviation = Math.max(...centered.map(Math.abs));
@@ -1102,7 +1113,7 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
 
   const fresh = combinations.filter(item => !item.previous);
   const available = fresh.length ? fresh : combinations;
-  if (!available.length) return applyChoiceSetBalance(selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous), currentMoney ?? startAmount);
+  if (!available.length) return applyChoiceSetBalance(selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous), currentMoney ?? startAmount, targetCount);
 
   // 기대 손익이 크게 치우친 조합은 우선 제외하되, 선택지의 위험도 차이는 유지합니다.
   let eligible = available.filter(item =>
@@ -1214,7 +1225,7 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
     const j = Math.floor(Math.random() * (i + 1));
     [selected[i], selected[j]] = [selected[j], selected[i]];
   }
-  return applyChoiceSetBalance(selected, currentMoney ?? startAmount);
+  return applyChoiceSetBalance(selected, currentMoney ?? startAmount, targetCount);
 }
 
 function calculateBankAccrual(principal, rate, elapsedMs, fractionalRemainder = 0) {
