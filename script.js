@@ -445,7 +445,7 @@ function samePair(a, b) {
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 
-const CHOICE_SET_EV_SPREAD_MAX = 0.25;
+const CHOICE_SET_EV_SPREAD_MAX = 0.4;
 const CHOICE_SET_EV_SPREAD_SCALE = 12;
 
 function getChoiceTargetEV(choice) {
