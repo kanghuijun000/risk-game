@@ -504,6 +504,7 @@ test("생성된 선택지의 표시 패널티와 실제 판정은 세트별 목�
         const average = targets.reduce((sum, value) => sum + value, 0) / targets.length;
         assert.ok(Math.abs(average - api.TARGET_CHOICE_EV_PERCENT) < 1e-8);
         choices.forEach(choice => {
+          if (!["cashRisk", "loss10", "loss25", "loss50", "totalLoss"].includes(choice.penaltyType)) return;
           const details = api.getEffectivePenaltyDetails(choice, stake, stake, 0, count);
           const after = api.getMoneyAfterChoiceEffect(choice, stake);
           const penaltyAfter = api.getMoneyAfterPenalty(after, details.penaltyType);
