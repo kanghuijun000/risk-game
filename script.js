@@ -445,7 +445,7 @@ function samePair(a, b) {
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
-const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0656, 3: 0.0803 };
+const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0711, 3: 0.0803 };
 const SAFE_POSITIVE_REFERENCE_VALUE_BY_MODE = { 2: 0, 3: 0 };
 
 function getReduceLossReferenceExposure(choiceCount = 2) {
