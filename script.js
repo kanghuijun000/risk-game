@@ -1206,7 +1206,7 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
 
   const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
   if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
-    return applyChoiceSetBalance(selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous), currentMoney ?? startAmount);
+    return applyChoiceSetBalance(selectFallbackChoiceSet(candidates, targetCount, riskById, valueById, currentMoney, previous), currentMoney ?? startAmount, targetCount);
   }
 
   let roll = Math.random() * totalWeight;
