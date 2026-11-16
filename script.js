@@ -102,7 +102,7 @@ const SAFE_CHOICES = [
     penalty: "패널티: 1.5% 확률로 10% 손실",
     penaltyChance: 1.5,
     penaltyType: "loss10",
-    rarityWeight: 0.9
+    rarityWeight: 0.2
   },
   {
     id: "micro03",
@@ -110,7 +110,8 @@ const SAFE_CHOICES = [
     title: "+0.3%",
     penalty: "패널티: 3.5% 확률로 10% 손실",
     penaltyChance: 3.5,
-    penaltyType: "loss10"
+    penaltyType: "loss10",
+    rarityWeight: 0.25
   },
   {
     id: "micro05",
@@ -118,7 +119,8 @@ const SAFE_CHOICES = [
     title: "+0.5%",
     penalty: "패널티: 5.5% 확률로 10% 손실",
     penaltyChance: 5.5,
-    penaltyType: "loss10"
+    penaltyType: "loss10",
+    rarityWeight: 0.3
   },
   {
     id: "safe10",
@@ -369,7 +371,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 20% 확률로 전액 손실",
     penaltyChance: 20,
     penaltyType: "totalLoss",
-    rarityWeight: 0.05
+    rarityWeight: 0.6
   },
   {
     id: "rare50",
@@ -378,7 +380,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 33.3% 확률로 전액 손실",
     penaltyChance: 33.3,
     penaltyType: "totalLoss",
-    rarityWeight: 0.05
+    rarityWeight: 0.65
   },
   {
     id: "rare100",
@@ -387,7 +389,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 50% 확률로 전액 손실",
     penaltyChance: 50,
     penaltyType: "totalLoss",
-    rarityWeight: 0.05
+    rarityWeight: 0.7
   },
   {
     id: "rare900",
@@ -408,6 +410,16 @@ const RISKY_CHOICES = [
     rarityWeight: 0.002
   }
 ];
+
+function getChoiceIncomeTier(choice, currentMoney = null) {
+  const gross = choice.amountEffect != null
+    ? Number(choice.amountEffect) / Math.max(1, Number(currentMoney) || 1) * 100
+    : Number(choice.effect) || 0;
+  // 저소득: 최대 +5%, 중소득: +5% 초과~+25%, 고소득: +25% 초과
+  if (gross <= 5) return 0;
+  if (gross <= 25) return 1;
+  return 2;
+}
 
 function randomItem(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -1049,10 +1061,21 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
 
   const occurrenceCount = new Map();
   const tierCombinationCount = new Map();
+  const incomeTierOccurrenceCount = new Map();
   eligible.forEach(item => {
+    const incomeTiers = item.choices.map(choice =>
+      getChoiceIncomeTier(choice, currentMoney ?? startAmount)
+    );
+    item.incomeTierKey = incomeTiers.slice().sort((a, b) => a - b).join("-");
     item.choices.forEach(choice => {
       occurrenceCount.set(choice.id, (occurrenceCount.get(choice.id) || 0) + 1);
     });
+    for (const tier of new Set(incomeTiers)) {
+      incomeTierOccurrenceCount.set(
+        tier,
+        (incomeTierOccurrenceCount.get(tier) || 0) + 1
+      );
+    }
     tierCombinationCount.set(
       item.tierKey,
       (tierCombinationCount.get(item.tierKey) || 0) + 1
@@ -1093,6 +1116,11 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
           0
         ) *
         (1 / tierCombinationCount.get(item.tierKey)) *
+        // 저·중·고소득 메뉴가 특정 구간에 쏠리지 않도록 부족한 소득 구간을 보정합니다.
+        item.choices.reduce((sum, choice) => {
+          const tier = getChoiceIncomeTier(choice, currentMoney ?? startAmount);
+          return sum + 1 / incomeTierOccurrenceCount.get(tier);
+        }, 0) / targetCount *
         (hasBonus ? 0.8 : 1) *
         (hasNoPenaltyZero ? 0.35 : 1) *
         rarityWeight *
