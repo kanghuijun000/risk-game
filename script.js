@@ -102,7 +102,7 @@ const SAFE_CHOICES = [
     penalty: "패널티: 1.5% 확률로 10% 손실",
     penaltyChance: 1.5,
     penaltyType: "loss10",
-    rarityWeight: 0.9
+    rarityWeight: 0.2
   },
   {
     id: "micro03",
@@ -110,7 +110,8 @@ const SAFE_CHOICES = [
     title: "+0.3%",
     penalty: "패널티: 3.5% 확률로 10% 손실",
     penaltyChance: 3.5,
-    penaltyType: "loss10"
+    penaltyType: "loss10",
+    rarityWeight: 0.25
   },
   {
     id: "micro05",
@@ -118,7 +119,8 @@ const SAFE_CHOICES = [
     title: "+0.5%",
     penalty: "패널티: 5.5% 확률로 10% 손실",
     penaltyChance: 5.5,
-    penaltyType: "loss10"
+    penaltyType: "loss10",
+    rarityWeight: 0.3
   },
   {
     id: "safe10",
@@ -369,7 +371,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 20% 확률로 전액 손실",
     penaltyChance: 20,
     penaltyType: "totalLoss",
-    rarityWeight: 0.05
+    rarityWeight: 0.6
   },
   {
     id: "rare50",
@@ -378,7 +380,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 33.3% 확률로 전액 손실",
     penaltyChance: 33.3,
     penaltyType: "totalLoss",
-    rarityWeight: 0.05
+    rarityWeight: 0.65
   },
   {
     id: "rare100",
@@ -387,7 +389,7 @@ const RISKY_CHOICES = [
     penalty: "패널티: 50% 확률로 전액 손실",
     penaltyChance: 50,
     penaltyType: "totalLoss",
-    rarityWeight: 0.05
+    rarityWeight: 0.7
   },
   {
     id: "rare900",
@@ -408,6 +410,16 @@ const RISKY_CHOICES = [
     rarityWeight: 0.002
   }
 ];
+
+function getChoiceIncomeTier(choice, currentMoney = null) {
+  const gross = choice.amountEffect != null
+    ? Number(choice.amountEffect) / Math.max(1, Number(currentMoney) || 1) * 100
+    : Number(choice.effect) || 0;
+  // 저소득: 최대 +10%, 중소득: +10% 초과~+50% 미만, 고소득: +50% 이상
+  if (gross <= 10) return 0;
+  if (gross < 50) return 1;
+  return 2;
+}
 
 function randomItem(array) {
   return array[Math.floor(Math.random() * array.length)];
@@ -433,7 +445,7 @@ function samePair(a, b) {
 const CASH_REWARD_REFERENCE_STAKE = 10000;
 const TARGET_CHOICE_EV_PERCENT = -0.05;
 const LOSS_CHANCE_REDUCTION_FACTOR = 0.8;
-const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0656, 3: 0.0803 };
+const REDUCE_LOSS_REFERENCE_EXPOSURE_BY_MODE = { 2: 0.0711, 3: 0.06628 };
 const SAFE_POSITIVE_REFERENCE_VALUE_BY_MODE = { 2: 0, 3: 0 };
 
 function getReduceLossReferenceExposure(choiceCount = 2) {
@@ -1049,10 +1061,21 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
 
   const occurrenceCount = new Map();
   const tierCombinationCount = new Map();
+  const incomeTierOccurrenceCount = new Map();
   eligible.forEach(item => {
+    const incomeTiers = item.choices.map(choice =>
+      getChoiceIncomeTier(choice, currentMoney ?? startAmount)
+    );
+    item.incomeTierKey = incomeTiers.slice().sort((a, b) => a - b).join("-");
     item.choices.forEach(choice => {
       occurrenceCount.set(choice.id, (occurrenceCount.get(choice.id) || 0) + 1);
     });
+    for (const tier of new Set(incomeTiers)) {
+      incomeTierOccurrenceCount.set(
+        tier,
+        (incomeTierOccurrenceCount.get(tier) || 0) + 1
+      );
+    }
     tierCombinationCount.set(
       item.tierKey,
       (tierCombinationCount.get(item.tierKey) || 0) + 1
@@ -1069,12 +1092,13 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
       ),
       1
     );
-    const containsRareJackpot = item.choices.some(choice =>
-      ["rare25", "rare50", "rare100", "rare900", "ultra100x"].includes(choice.id)
+    const containsUltraJackpot = item.choices.some(choice =>
+      ["rare900", "ultra100x"].includes(choice.id)
     );
-    // 3개 선택지 모드는 카드 수가 늘어나므로, 희귀 잭팟의 턴당 출현률을 2개 모드와 비슷하게 유지합니다.
+    // +25~100% 고소득은 일반 고소득 구간으로 균형 조정하고,
+    // +900%와 100배만 초희귀 출현 보정을 유지합니다.
     const rarityWeight = baseRarityWeight * (
-      containsRareJackpot
+      containsUltraJackpot
         ? (targetCount === 3 ? 0.30 : 1.5)
         : 1
     );
@@ -1093,6 +1117,11 @@ function generateChoices(previous = null, count = 2, safePositiveTurns = 0, curr
           0
         ) *
         (1 / tierCombinationCount.get(item.tierKey)) *
+        // 저·중·고소득 메뉴가 특정 구간에 쏠리지 않도록 부족한 소득 구간을 보정합니다.
+        item.choices.reduce((sum, choice) => {
+          const tier = getChoiceIncomeTier(choice, currentMoney ?? startAmount);
+          return sum + 1 / incomeTierOccurrenceCount.get(tier);
+        }, 0) / targetCount *
         (hasBonus ? 0.8 : 1) *
         (hasNoPenaltyZero ? 0.35 : 1) *
         rarityWeight *
