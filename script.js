@@ -415,9 +415,9 @@ function getChoiceIncomeTier(choice, currentMoney = null) {
   const gross = choice.amountEffect != null
     ? Number(choice.amountEffect) / Math.max(1, Number(currentMoney) || 1) * 100
     : Number(choice.effect) || 0;
-  // 저소득: 최대 +5%, 중소득: +5% 초과~+25%, 고소득: +25% 초과
-  if (gross <= 5) return 0;
-  if (gross <= 25) return 1;
+  // 저소득: 최대 +10%, 중소득: +10% 초과~+50%, 고소득: +50% 초과
+  if (gross <= 10) return 0;
+  if (gross <= 50) return 1;
   return 2;
 }
 
